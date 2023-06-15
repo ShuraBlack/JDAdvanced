@@ -1,7 +1,5 @@
 package de.shurablack.sql;
 
-import kotlin.jvm.Strictfp;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,14 +86,14 @@ public class FluentSqlBuilder implements Serializable {
     }
 
     /**
-     * Confinience Method to make multiple changes in one request.
+     * Convenience Method to make multiple changes in one request.
      * <br><b>This is a closed SQL Request.</b>
      * @param table the specified table
      * @param colums the specified colums in the table, which will be updated
      * @param values the data which will be updated (use {@link FluentSqlBuilder#VALUE(String...)} to wrap the data)
      * @return the builder for chaining
      */
-    public FluentSqlBuilder UPDATE_BLOCK(final String table, final List<String> colums, List<String> values) {
+    public FluentSqlBuilder UPDATE_CHAIN(final String table, final List<String> colums, List<String> values) {
         sql.append("INSERT INTO ").append(table).append(" (").append(String.join(", ", colums)).append(")")
                 .append(" VALUES ").append(String.join(",", values))
                 .append(" ON DUPLICATE KEY UPDATE ")

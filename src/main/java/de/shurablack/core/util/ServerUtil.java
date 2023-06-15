@@ -60,7 +60,7 @@ public class ServerUtil {
      * Checks if the {@link Member#getRoles()} include the given roleID
      * @param member the specified server member which will be checked
      * @param roleID the specified {@link net.dv8tion.jda.api.entities.Guild Guild} {@link Role#getId()}
-     * @return true if he owned the given role
+     * @return true if he owns the given role
      */
     public static boolean hasRole(final Member member, final String roleID) {
         return member.getRoles().stream().anyMatch(role -> role.getId().equals(roleID));
