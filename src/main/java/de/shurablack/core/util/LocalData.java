@@ -1,14 +1,16 @@
 package de.shurablack.core.util;
 
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -35,22 +37,22 @@ public class LocalData {
     private static final Properties TEMPS = new Properties();
 
     /** Map for categoryID data*/
-    private static final Map<String, String> CATEGORYIDS = new HashMap<>();
+    private static final Properties CATEGORYIDS = new Properties();
 
     /** Map for channelID data*/
-    private static final Map<String,String> CHANNELIDS = new HashMap<>();
+    private static final Properties CHANNELIDS = new Properties();
 
     /** Map for messageID data*/
-    private static final Map<String, String> MESSAGEIDS = new HashMap<>();
+    private static final Properties MESSAGEIDS = new Properties();
 
     /** Map for webhook URLs data*/
-    private static final Map<String,String> WEBHOOKS = new HashMap<>();
+    private static final Properties WEBHOOKS = new Properties();
 
     /** Map for emojiID data*/
-    private static final Map<String, String> EMOJIID = new HashMap<>();
+    private static final Properties EMOJIID = new Properties();
 
     /** Map for roleID data*/
-    private static final Map<String, String> ROLEID = new HashMap<>();
+    private static final Properties ROLEID = new Properties();
 
     /** Name of the temp file*/
     private static final String TEMP_FILE = "temp.properties";
@@ -107,12 +109,12 @@ public class LocalData {
      */
     private static void fileCheck() {
         try {
-            singleFile("category_id.properties", "# Add channel with <name>=<category_id>");
+            singleFile("category_id.properties", "# Add category with <name>=<category_id>");
             singleFile("channel_id.properties", "# Add channel with <name>=<channel_id>");
             singleFile("message_id.properties", "# Add message with <name>=<message_id>");
             singleFile("webhook_link.properties", "# Add webhook with <name>=<webhook_link>");
-            singleFile("emoji_id.properties", "# Add webhook with <name>=<emoji_id>");
-            singleFile("role_id.properties", "# Add webhook with <name>=<role_id>");
+            singleFile("emoji_id.properties", "# Add emoji with <name>=<emoji_id>");
+            singleFile("role_id.properties", "# Add role with <name>=<role_id>");
             singleFile("tmp.properties","# Add local properties with <key>=<value>");
         } catch (FileNotFoundException e) {
             LOGGER.warn("Couldnt create properties files", e);
@@ -125,12 +127,12 @@ public class LocalData {
      * Helper method that loads the necessary files into memory.
      */
     private static void loadFiles() {
-        FileUtil.fillProperties(FileUtil.loadProperties("category_id.properties"), CATEGORYIDS);
-        FileUtil.fillProperties(FileUtil.loadProperties("channel_id.properties"), CHANNELIDS);
-        FileUtil.fillProperties(FileUtil.loadProperties("message_id.properties"), MESSAGEIDS);
-        FileUtil.fillProperties(FileUtil.loadProperties("webhook_link.properties"), WEBHOOKS);
-        FileUtil.fillProperties(FileUtil.loadProperties("emoji_id.properties"), EMOJIID);
-        FileUtil.fillProperties(FileUtil.loadProperties("role_id.properties"), ROLEID);
+        CATEGORYIDS.putAll(FileUtil.loadProperties("category_id.properties"));
+        CHANNELIDS.putAll(FileUtil.loadProperties("channel_id.properties"));
+        MESSAGEIDS.putAll(FileUtil.loadProperties("message_id.properties"));
+        WEBHOOKS.putAll(FileUtil.loadProperties("webhook_link.properties"));
+        EMOJIID.putAll(FileUtil.loadProperties("emoji_id.properties"));
+        ROLEID.putAll(FileUtil.loadProperties("role_id.properties"));
         TEMPS.putAll(FileUtil.loadProperties(TEMP_FILE));
     }
 
@@ -159,7 +161,7 @@ public class LocalData {
     /**
      * Returns the stored temp value
      * @param key the specified key value
-     * @return the stored value
+     * @return the stored value or null
      */
     public static String getTmp(final String key) {
         return TEMPS.getProperty(key);
@@ -168,46 +170,46 @@ public class LocalData {
     /**
      * Returns the stored category ID if it exists
      * @param name the specified name for the ID
-     * @return the category ID or an empty string
+     * @return the category ID or null
      */
     public static String getCategoryID(final String name) {
-        return CATEGORYIDS.getOrDefault(name,"");
+        return CATEGORYIDS.getProperty(name);
     }
 
     /**
      * Returns the stored channel ID if it exists
      * @param name the specified name for the ID
-     * @return the channel ID or an empty string
+     * @return the channel ID or null
      */
     public static String getChannelID(final String name) {
-        return CHANNELIDS.getOrDefault(name,"");
+        return CHANNELIDS.getProperty(name);
     }
 
     /**
      * Returns the stored message ID if it exists
      * @param name the specified name for the ID
-     * @return the message ID or an empty string
+     * @return the message ID or null
      */
     public static String getMessageID(final String name) {
-        return MESSAGEIDS.getOrDefault(name,"");
+        return MESSAGEIDS.getProperty(name);
     }
 
     /**
      * Returns the stored webhook URL if it exists
      * @param name the specified name for the ID
-     * @return the URL or an empty string
+     * @return the URL or null
      */
     public static String getWebHookLink(final String name) {
-        return WEBHOOKS.getOrDefault(name,"");
+        return WEBHOOKS.getProperty(name);
     }
 
     /**
      * Returns the stored emoji ID or unicode if it exists
      * @param name the specified name for the ID
-     * @return the ID/Unicode or an empty string
+     * @return the ID/Unicode or null
      */
     public static String getEmojiID(final String name) {
-        return EMOJIID.getOrDefault(name,"");
+        return EMOJIID.getProperty(name);
     }
 
     /**
@@ -216,7 +218,7 @@ public class LocalData {
      * @return the role ID or an empty string
      */
     public static String getRoleID(final String name) {
-        return ROLEID.getOrDefault(name, "");
+        return ROLEID.getProperty(name);
     }
 
     /**
@@ -227,6 +229,91 @@ public class LocalData {
         final String emojis = guild.getEmojis().stream().map(CustomEmoji::getAsMention).collect(Collectors.joining("\n"));
         final String msg = String.format("Emojis of: %s - %s%n%n%s", guild.getName(), guild.getId(), emojis);
         LOGGER.info(msg);
+    }
+
+    /**
+     * Fetches {@link Category} from the given {@link Guild}.
+     * Only missing entries will be stored and saved into the local file.
+     * @param guild the specified guild which will be used
+     * @return true, if the action was successful
+     */
+    public static boolean fetchCategories(final Guild guild) {
+        if (guild == null) {
+            return false;
+        }
+
+        for (Category category : guild.getCategories()) {
+            if (CATEGORYIDS.containsValue(category.getId())) {
+                continue;
+            }
+            CATEGORYIDS.setProperty(category.getName(), category.getId());
+        }
+        FileUtil.saveProperties("category_id.properties","# Add category with <name>=<category_id>", CATEGORYIDS);
+        return true;
+    }
+
+    /**
+     * Fetches {@link GuildChannel} from the given {@link Guild}.
+     * This includes hidden channels, but exclude {@link net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel ThreadChannel}.
+     * Only missing entries will be stored and saved into the local file.
+     * @param guild the specified guild which will be used
+     * @return true, if the action was successful
+     */
+    public static boolean fetchChannels(final Guild guild) {
+        if (guild == null) {
+            return false;
+        }
+
+        for (GuildChannel channel : guild.getChannels()) {
+            if (CHANNELIDS.containsValue(channel.getId())) {
+                continue;
+            }
+            CHANNELIDS.setProperty(channel.getName(), channel.getId());
+        }
+        FileUtil.saveProperties("channel_id.properties","# Add channel with <name>=<channel_id>",CHANNELIDS);
+        return true;
+    }
+
+    /**
+     * Fetches {@link net.dv8tion.jda.api.entities.emoji.Emoji Emoji} from the given {@link Guild}.
+     * Only missing entries will be stored and saved into the local file.
+     * @param guild the specified guild which will be used
+     * @return true, if the action was successful
+     */
+    public static boolean fetchEmojis(final Guild guild) {
+        if (guild == null) {
+            return false;
+        }
+
+        for (RichCustomEmoji emoji : guild.getEmojis()) {
+            if (EMOJIID.containsKey(emoji.getName())) {
+                continue;
+            }
+            EMOJIID.setProperty(emoji.getName(), emoji.getAsMention());
+        }
+        FileUtil.saveProperties("emoji_id.properties","# Add emoji with <name>=<emoji_id>",EMOJIID);
+        return true;
+    }
+
+    /**
+     * Fetches {@link Role} from the given {@link Guild}.
+     * Only missing entries will be stored and saved into the local file.
+     * @param guild the specified guild which will be used
+     * @return true, if the action was successful
+     */
+    public static boolean fetchRoles(final Guild guild) {
+        if (guild == null) {
+            return false;
+        }
+
+        for (Role role : guild.getRoles()) {
+            if (EMOJIID.containsKey(role.getName())) {
+                continue;
+            }
+            EMOJIID.setProperty(role.getName(), role.getId());
+        }
+        FileUtil.saveProperties("role_id.properties","# Add role with <name>=<role_id>",EMOJIID);
+        return true;
     }
 
     /**
