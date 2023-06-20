@@ -23,16 +23,16 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [JCABI-Log](https://github.com/jcabi/jcabi-log) - **0.22.0**
 - [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
+- [Json](https://github.com/stleary/JSON-java) - **20230618**
 
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
-- **mapping** -> Maps Multiply Identifiers to one
+- **mapping** -> Maps multiple Identifiers to one
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
 
 ## Download
 Currently this project only supports [GitHub Realse](https://github.com/ShuraBlack/JDAdvanced/releases) with a **.jar**.
-
 
 
 ## Creating the JDAUtil Object
