@@ -28,7 +28,7 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
-- **mapping** -> Maps multiple Identifiers to one
+- **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
 
 ## Download
@@ -87,12 +87,12 @@ final EventHandler handler = EventHandler.create()
   // Set Prefix for Messages and boolean for ingoreBotRequests
   .set(EventHandler.DEFAULT_PREFIX, true)
   .registerEvent(
-    new InteractionSet().create(
+    InteractionSet().create(
       new EventWorkerA(),
       Interaction.create(GLOBAL_SLASH, "identifier").setGlobalCD(30),
       Interaction.create(GUILD_SLASH, "identifier")
     ),
-    new InteractionSet().create(
+    InteractionSet().create(
       new EventWorkerB(),
       Interaction.create(GLOBAL_SLASH, "identifier").setUserCD(10),
       Interaction.create(GUILD_SLASH, "identifier").setChannelRestriction(List.of(...))
