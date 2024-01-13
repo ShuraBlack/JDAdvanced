@@ -95,14 +95,14 @@ public class Interaction {
      * It takes a value in seconds as an argument and converts it to nanoseconds before storing it
      * <br>
      * This method throws an {@link IllegalArgumentException} if given value is less than {@link Interaction#NO_COOLDOWN}
-     * @param global_cooldown_sec the specified time in seconds
+     * @param globalCooldownSec the specified time in seconds
      * @return the Interaction for chaining
      */
-    public Interaction setGlobalCD(final long global_cooldown_sec) {
-        if (global_cooldown_sec < NO_COOLDOWN) {
+    public Interaction setGlobalCD(final long globalCooldownSec) {
+        if (globalCooldownSec < NO_COOLDOWN) {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
-        this.globalCooldown = global_cooldown_sec;
+        this.globalCooldown = globalCooldownSec;
         return this;
     }
 
@@ -112,14 +112,14 @@ public class Interaction {
      * It takes a value in seconds as an argument and converts it to nanoseconds before storing it.
      * <br>
      * This method throws an {@link IllegalArgumentException} if given value is less than {@link Interaction#NO_COOLDOWN}
-     * @param user_cooldown_sec the specified time in seconds
+     * @param userCooldownSec the specified time in seconds
      * @return the Interaction for chaining
      */
-    public Interaction setUserCD(final long user_cooldown_sec) {
-        if (user_cooldown_sec < NO_COOLDOWN) {
+    public Interaction setUserCD(final long userCooldownSec) {
+        if (userCooldownSec < NO_COOLDOWN) {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
-        this.userCooldown = user_cooldown_sec;
+        this.userCooldown = userCooldownSec;
         return this;
     }
 
@@ -127,22 +127,22 @@ public class Interaction {
      * This method sets the channel restriction of the Interaction.
      * <br><br>
      * If this method doest get called, it can be triggered from anywhere
-     * @param channelRestriction the specified list of channelIDs
-     * @return
+     * @param channelIDs the specified list of channelIDs
+     * @return the Interaction for chaining
      */
-    public Interaction setChannelRestriction(final List<String> channelRestriction) {
-        this.channelRestriction.addAll(channelRestriction);
+    public Interaction setChannelRestriction(final List<String> channelIDs) {
+        this.channelRestriction.addAll(channelIDs);
         return this;
     }
 
     /**
-     * Add the {@link EventHandler#PREFIX} to any standard message identifier
+     * Add the {@link EventHandler#getPREFIX()} to any standard message identifier
      * @param identifier the specified unique string
      * @return the unique string, starting with the prefix
      */
     private String addPrefix(final String identifier) {
         if (this.type.equals(Type.PRIVATE_CHANNEL) || this.type.equals(Type.PUBLIC_CHANNEL)) {
-            return EventHandler.PREFIX + identifier;
+            return EventHandler.getPREFIX() + identifier;
         }
         return identifier;
     }

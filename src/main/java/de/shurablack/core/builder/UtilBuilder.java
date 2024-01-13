@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  * UtilBuilder.init();
  *
  * // Create a JDABuilder object to build the Discord bot
- * JDABuilder builder = createJDABuilder();
+ * JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
  *
  * // Create an EventHandler object to handle events in the Discord bot
  * EventHandler handler = createEventHandler();
@@ -77,6 +77,17 @@ public class UtilBuilder {
     }
 
     /**
+     *  This is a static factory method that creates a new UtilBuilder object for building a {@link JDAUtil}.
+     *  It uses the default EventHandler and a default JDABuilder with the token from {@link Config}
+     * @return the builder for chaining
+     */
+    public static UtilBuilder createDefault() {
+        final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
+        final EventHandler handler = EventHandler.createDefault();
+        return create(builder, handler);
+    }
+
+    /**
      *  This is a static factory method that creates a new UtilBuilder object for building a {@link JDAUtil}
      * @param builder the builder for the {@link net.dv8tion.jda.api.JDA}
      * @param handler the specified {@link EventHandler}
@@ -106,7 +117,7 @@ public class UtilBuilder {
      * and creates a ConnectionPool object to manage the connections.
      * @return the builder for chaining
      */
-    public UtilBuilder addDataBase() {
+    public UtilBuilder addDatabase() {
         final String url = Config.getConfig("db_url");
         final String username = Config.getConfig("db_username");
         final String password = Config.getConfig("db_password");

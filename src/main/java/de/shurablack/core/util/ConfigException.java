@@ -1,5 +1,7 @@
 package de.shurablack.core.util;
 
+import de.shurablack.core.builder.UtilBuilder;
+
 /**
  * <p>
  * The ConfigException class is a simple Java class that represents an exception that is thrown when there is an error

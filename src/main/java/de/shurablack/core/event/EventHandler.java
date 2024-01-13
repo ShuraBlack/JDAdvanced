@@ -21,7 +21,6 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,9 +43,7 @@ import java.util.stream.Collectors;
  * @date 15.06.2023
  * @author ShuraBlack
  */
-public class EventHandler implements Serializable {
-
-    private static final long serialVersionUID = 288859172113309593L;
+public class EventHandler {
 
     /** Class Logger */
     private static final Logger LOGGER = LogManager.getLogger(EventHandler.class);
@@ -55,7 +52,7 @@ public class EventHandler implements Serializable {
     public static final String DEFAULT_PREFIX = "!";
 
     /** The prefix for commands */
-    public static String PREFIX = DEFAULT_PREFIX;
+    private static String PREFIX = DEFAULT_PREFIX;
 
     /** Indicating whether requests from other bots should be ignored */
     private boolean ignoreBotRequest = true;
@@ -77,7 +74,7 @@ public class EventHandler implements Serializable {
      * Creates a new EventHandler object
      * @return the handler for chaining
      */
-    public EventHandler create() {
+    public static EventHandler createDefault() {
         final EventHandler handler = new EventHandler();
         for (Type t : Type.values()) {
             handler.events.put(t, new ConcurrentHashMap<>());
@@ -86,15 +83,16 @@ public class EventHandler implements Serializable {
     }
 
     /**
-     * Sets the fields of the EventHandler
-     * @param prefix the prefix for standard messages
+     * Creates a new EventHandler object
+     * @param prefix the prefix for regular messages
      * @param ignoreBotRequest the ignore flag
      * @return the handler for chaining
      */
-    public EventHandler set(final String prefix, final boolean ignoreBotRequest) {
+    public static EventHandler create(final String prefix, final boolean ignoreBotRequest) {
+        final EventHandler handler = createDefault();
         PREFIX = prefix;
-        this.ignoreBotRequest = ignoreBotRequest;
-        return this;
+        handler.ignoreBotRequest = ignoreBotRequest;
+        return handler;
     }
 
     /**
@@ -293,7 +291,7 @@ public class EventHandler implements Serializable {
     }
 
     /**
-     * Handles the selection menu event
+     * Handles the string selection menu event
      * @param identifier is the unique {@link String} for the event
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
@@ -308,6 +306,12 @@ public class EventHandler implements Serializable {
         });
     }
 
+    /**
+     * Handles the entity selection menu event
+     * @param identifier is the unique {@link String} for the event
+     * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     *              of the {@link net.dv8tion.jda.api.JDA JDA}
+     */
     public void onEntitySelectionMenuEvent(final String identifier, EntitySelectInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             Event e;
@@ -427,6 +431,13 @@ public class EventHandler implements Serializable {
      */
     public Map<String, Map<String, Long>> getLastCallUser() {
         return lastCallUser;
+    }
+
+    /**
+     * @return the set Prefix
+     */
+    public static String getPREFIX() {
+        return PREFIX;
     }
 
     /**

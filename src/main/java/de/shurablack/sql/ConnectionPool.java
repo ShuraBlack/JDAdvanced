@@ -56,7 +56,7 @@ public class ConnectionPool {
     /** Driver name for MySQL Database*/
     public static final String DRIVER_MYSQL = "com.mysql.cj.jdbc.Driver";
 
-    public void registerDriver(final String driver) {
+    public static void registerDriver(final String driver) {
         try {
             Class.forName(driver).newInstance();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {

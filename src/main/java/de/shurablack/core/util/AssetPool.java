@@ -22,15 +22,16 @@ import static de.shurablack.core.util.FileUtil.loadProperties;
  * @date 09.06.2023
  * @author ShuraBlack
  */
-public class AssetPool implements Serializable {
-
-    private static final long serialVersionUID = 4143282282066420106L;
+public class AssetPool {
 
     /** Class Logger */
     private static final Logger LOGGER = LogManager.getLogger(AssetPool.class);
 
     /** Map object for storing the data */
     private static final Map<String, String> ASSETS = new ConcurrentHashMap<>();
+
+    /** Map object for storing files (like images) */
+    private static final Map<String, File> FILE_ASSETS = new ConcurrentHashMap<>();
 
     /** Name of assets file*/
     private static final String ASSETS_FILE = "assets.properties";
@@ -45,11 +46,20 @@ public class AssetPool implements Serializable {
         if (file.exists()) {
             Properties properties = loadProperties(ASSETS_FILE);
             for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-                ASSETS.put((String) entry.getKey(), (String) entry.getValue());
+                if (((String) entry.getKey()).startsWith("url")) {
+                    ASSETS.put((String) entry.getKey(), (String) entry.getValue());
+                } else if (((String) entry.getKey()).startsWith("img")) {
+                    final File reference = new File((String) entry.getValue());
+                    if (!file.exists()) {
+                        LOGGER.info(String.format("Couldnt find file <%s>", entry.getValue()));
+                        continue;
+                    }
+                    FILE_ASSETS.put((String) entry.getKey(), reference);
+                }
             }
         }
         try (final OutputStream out = new FileOutputStream(file)) {
-            final String msg = "# Add channel with <url_name/img_name>=<source>\n" +
+            final String msg = "# Add channel with <url_name/file_name>=<source>\n" +
                     "# The source can be a path or link to an image";
             out.write(msg.getBytes());
             out.flush();
@@ -71,17 +81,28 @@ public class AssetPool implements Serializable {
      * @return true if the asset got successfully removed
      */
     public static boolean remove(final String name) {
-        return ASSETS.remove(name) != null;
+        return ASSETS.remove(name) != null || FILE_ASSETS.remove(name) != null;
     }
 
     /**
-     * This is a static method that adds an asset to the pool
+     * This is a static method that adds an asset to the pool.
+     * Local files need to be specified with an "file" and paths or links with an "url"
      * @param name the name of the asset
      * @param source the source of the asset (URL or path)
      * @return true if the asset got successfully loaded
      */
     public static boolean add(final String name, final String source) {
-        return ASSETS.put(name, source) == null;
+        if (name.startsWith("file")) {
+            final File file = new File(source);
+            if (!file.exists()) {
+                return false;
+            }
+            return FILE_ASSETS.put(name, file) == null;
+        }
+        if (name.startsWith("url")) {
+            return ASSETS.put(name, source) == null;
+        }
+        return false;
     }
 
     /**
@@ -91,5 +112,14 @@ public class AssetPool implements Serializable {
      */
     public static String get(final String name) {
         return ASSETS.getOrDefault(name, "");
+    }
+
+    /**
+     * This is a static method that retrieves an asset from the pool
+     * @param name the name of the asset
+     * @return the asset file
+     */
+    public static File getFile(final String name) {
+        return FILE_ASSETS.get(name);
     }
 }

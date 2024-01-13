@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class LocalData {
 
     /** Class Logger */
-    public static final Logger LOGGER = LogManager.getLogger(LocalData.class);
+    private static final Logger LOGGER = LogManager.getLogger(LocalData.class);
 
     /** Temp Properties **/
     private static final Properties TEMPS = new Properties();
@@ -49,10 +49,10 @@ public class LocalData {
     private static final Properties WEBHOOKS = new Properties();
 
     /** Map for emojiID data*/
-    private static final Properties EMOJIID = new Properties();
+    private static final Properties EMOJIIDS = new Properties();
 
     /** Map for roleID data*/
-    private static final Properties ROLEID = new Properties();
+    private static final Properties ROLEIDS = new Properties();
 
     /** Name of the temp file*/
     private static final String TEMP_FILE = "temp.properties";
@@ -131,8 +131,8 @@ public class LocalData {
         CHANNELIDS.putAll(FileUtil.loadProperties("channel_id.properties"));
         MESSAGEIDS.putAll(FileUtil.loadProperties("message_id.properties"));
         WEBHOOKS.putAll(FileUtil.loadProperties("webhook_link.properties"));
-        EMOJIID.putAll(FileUtil.loadProperties("emoji_id.properties"));
-        ROLEID.putAll(FileUtil.loadProperties("role_id.properties"));
+        EMOJIIDS.putAll(FileUtil.loadProperties("emoji_id.properties"));
+        ROLEIDS.putAll(FileUtil.loadProperties("role_id.properties"));
         TEMPS.putAll(FileUtil.loadProperties(TEMP_FILE));
     }
 
@@ -209,7 +209,7 @@ public class LocalData {
      * @return the ID/Unicode or null
      */
     public static String getEmojiID(final String name) {
-        return EMOJIID.getProperty(name);
+        return EMOJIIDS.getProperty(name);
     }
 
     /**
@@ -218,17 +218,7 @@ public class LocalData {
      * @return the role ID or an empty string
      */
     public static String getRoleID(final String name) {
-        return ROLEID.getProperty(name);
-    }
-
-    /**
-     * Logs all {@link net.dv8tion.jda.api.entities.emoji.Emoji} as mention string
-     * @param guild the specified discord server, were it loads the data from
-     */
-    public static void getServerEmojis(final Guild guild) {
-        final String emojis = guild.getEmojis().stream().map(CustomEmoji::getAsMention).collect(Collectors.joining("\n"));
-        final String msg = String.format("Emojis of: %s - %s%n%n%s", guild.getName(), guild.getId(), emojis);
-        LOGGER.info(msg);
+        return ROLEIDS.getProperty(name);
     }
 
     /**
@@ -286,12 +276,12 @@ public class LocalData {
         }
 
         for (RichCustomEmoji emoji : guild.getEmojis()) {
-            if (EMOJIID.containsKey(emoji.getName())) {
+            if (EMOJIIDS.containsKey(emoji.getName())) {
                 continue;
             }
-            EMOJIID.setProperty(emoji.getName(), emoji.getAsMention());
+            EMOJIIDS.setProperty(emoji.getName(), emoji.getAsMention());
         }
-        FileUtil.saveProperties("emoji_id.properties","# Add emoji with <name>=<emoji_id>",EMOJIID);
+        FileUtil.saveProperties("emoji_id.properties","# Add emoji with <name>=<emoji_id>", EMOJIIDS);
         return true;
     }
 
@@ -307,13 +297,23 @@ public class LocalData {
         }
 
         for (Role role : guild.getRoles()) {
-            if (EMOJIID.containsKey(role.getName())) {
+            if (EMOJIIDS.containsKey(role.getName())) {
                 continue;
             }
-            EMOJIID.setProperty(role.getName(), role.getId());
+            EMOJIIDS.setProperty(role.getName(), role.getId());
         }
-        FileUtil.saveProperties("role_id.properties","# Add role with <name>=<role_id>",EMOJIID);
+        FileUtil.saveProperties("role_id.properties","# Add role with <name>=<role_id>", EMOJIIDS);
         return true;
+    }
+
+    /**
+     * Logs all {@link net.dv8tion.jda.api.entities.emoji.Emoji} as mention string
+     * @param guild the specified discord server, were it loads the data from
+     */
+    public static void getServerEmojis(final Guild guild) {
+        final String emojis = guild.getEmojis().stream().map(CustomEmoji::getAsMention).collect(Collectors.joining("\n"));
+        final String msg = String.format("Emojis of: %s - %s%n%n%s", guild.getName(), guild.getId(), emojis);
+        LOGGER.info(msg);
     }
 
     /**

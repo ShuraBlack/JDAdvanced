@@ -33,7 +33,7 @@ import java.util.List;
  *
  * SQLRequest
  *     // Create a SQLRequest object
- *     .create(pool);
+ *     .create();
  *     // Obtain a database connection
  *     .connect();
  *     // Execute a SELECT query and store the results in a List
@@ -53,26 +53,27 @@ public class SQLRequest {
     private static final Logger LOGGER = LogManager.getLogger(SQLRequest.class);
 
     /** Database connection pool */
-    private final ConnectionPool pool;
+    private static ConnectionPool POOL;
 
     /** Requested Connection */
     private Connection conn;
 
+    private SQLRequest() { }
+
     /**
-     * Package private SQLRequest constructor
-     * @param pool the database connection pool
+     * Initialize the ConnectionPool for future requests
+     * @param pool the Connection Pool (JDAUtil)
      */
-    SQLRequest(final ConnectionPool pool) {
-        this.pool = pool;
+    public static void init(final ConnectionPool pool) {
+        POOL = pool;
     }
 
     /**
      * A static factory method for creating SQLRequest objects
-     * @param pool the database connection pool
      * @return the SQLRequest for chaining
      */
-    public static SQLRequest create(final ConnectionPool pool) {
-        return new SQLRequest(pool);
+    public static SQLRequest create() {
+        return new SQLRequest();
     }
 
     /**
@@ -86,7 +87,7 @@ public class SQLRequest {
             LOGGER.error("SQLRequest tried to get another connection. Do not call SQLRequest.connect() twice");
             return this;
         }
-        this.conn = this.pool.getConnection();
+        this.conn = POOL.getConnection();
         return this;
     }
 
@@ -97,7 +98,7 @@ public class SQLRequest {
      * to ensure that the database connection is properly cleaned up and returned to the ConnectionPool
      */
     public void close() {
-        this.pool.returnConnection(this.conn);
+        POOL.returnConnection(this.conn);
     }
 
     /**
@@ -105,14 +106,13 @@ public class SQLRequest {
      * <br><br>
      * This method creates a new SQLRequest object, obtains a database connection, executes the query,
      * stores the results in a List, and closes the database connection
-     * @param pool the database connection pool
      * @param sql the SQL statement which will be executed
      * @param cls the class type of the returning object
      * @param <T> the return class type
      * @return a {@link ArrayList} with the results
      */
-    public static <T> List<T> runList(final ConnectionPool pool, final String sql, final Class<T> cls) {
-        SQLRequest request = new SQLRequest(pool);
+    public static <T> List<T> runList(final String sql, final Class<T> cls) {
+        SQLRequest request = new SQLRequest();
         request.connect();
         List<T> retval = new ArrayList<>();
         request.result(sql, cls, retval);
@@ -125,14 +125,13 @@ public class SQLRequest {
      * <br><br>
      * This method creates a new SQLRequest object, obtains a database connection, executes the query,
      * stores the results in a List, and closes the database connection
-     * @param pool the database connection pool
      * @param sql the SQL statement which will be executed
      * @param cls the class type of the returning object
      * @param <T> the return class type
      * @return the {@link Result} with possible value
      */
-    public static <T> Result<T> runSingle(final ConnectionPool pool, final String sql, final Class<T> cls) {
-        SQLRequest request = new SQLRequest(pool);
+    public static <T> Result<T> runSingle(final String sql, final Class<T> cls) {
+        SQLRequest request = new SQLRequest();
         request.connect();
         List<T> retval = new ArrayList<>();
         Result<T> single = new Result<>();
@@ -145,20 +144,19 @@ public class SQLRequest {
     }
 
     /**
-     * A static convenience method for executing a SQL query that returns a result set and storing the results in a Result.
+     * A static convenience method for executing a SQL query that returns a result set and storing the results in a {@link Result}.
      * <br><br>
      * This methods is implemented for scalar queries only.
      * <br><br>
      * This method creates a new SQLRequest object, obtains a database connection, executes the query,
      * stores the results, and closes the database connection
-     * @param pool the database connection pool
      * @param sql the SQL statement which will be executed
      * @param cls the class type of the returning object
      * @param <T> the return class type
      * @return the {@link Result} with possible value
      */
-    public static <T> Result<T> runScalar(final ConnectionPool pool, final String sql, final Class<T> cls) {
-        SQLRequest request = new SQLRequest(pool);
+    public static <T> Result<T> runScalar(final String sql, final Class<T> cls) {
+        SQLRequest request = new SQLRequest();
         request.connect();
         Result<T> retval = new Result<>();
         request.result(sql, cls, retval);
@@ -171,12 +169,10 @@ public class SQLRequest {
      * <br><br>
      * This method creates a new SQLRequest object, obtains a database connection, executes the query
      * and closes the database connection
-     * @param pool the database connection pool
      * @param sql the SQL statement which will be executed
-     * @param <T> the return class type
      */
-    public static <T> void run(final ConnectionPool pool, final String sql) {
-        SQLRequest request = new SQLRequest(pool);
+    public static void run(final String sql) {
+        SQLRequest request = new SQLRequest();
         request.connect();
         request.execute(sql);
         request.close();
@@ -219,7 +215,7 @@ public class SQLRequest {
         } catch (Exception e) {
             LOGGER.error(String.format("An error occurred while executing SQL\nClass: %s\nSQL: <%s>", cls.getSimpleName(), sql),e);
         } finally {
-            this.pool.returnConnection(this.conn);
+            POOL.returnConnection(this.conn);
         }
         return this;
     }
@@ -229,9 +225,8 @@ public class SQLRequest {
      * @param sql the SQL statement which will be executed
      * @return the SQLRequest for chaining (more requests or closing)
      */
-    public SQLRequest execute(String sql) {
-        try {
-            final Statement statement = conn.createStatement();
+    public SQLRequest execute(final String sql) {
+        try (final Statement statement = conn.createStatement()) {
             statement.executeUpdate(sql);
         } catch (SQLException e) {
             LOGGER.error(String.format("An error occurred while executing SQL\nSQL: <%s>", sql),e);

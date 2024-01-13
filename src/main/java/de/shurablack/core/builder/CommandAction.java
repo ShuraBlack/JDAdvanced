@@ -1,6 +1,5 @@
 package de.shurablack.core.builder;
 
-import java.io.Serializable;
 import java.util.function.Consumer;
 
 /**
@@ -33,9 +32,7 @@ import java.util.function.Consumer;
  * @date 12.06.2023
  * @author ShuraBlack
  */
-public class CommandAction implements Serializable {
-
-    private static final long serialVersionUID = 7730366511601722413L;
+public class CommandAction {
 
     /**
      * A string representing the name of the action.

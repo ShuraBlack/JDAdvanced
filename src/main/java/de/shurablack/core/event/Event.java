@@ -3,7 +3,6 @@ package de.shurablack.core.event;
 import de.shurablack.core.event.interaction.Interaction;
 import de.shurablack.core.event.interaction.InteractionSet;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -21,9 +20,7 @@ import java.util.List;
  * @date 12.06.2023
  * @author ShuraBlack
  */
-public class Event implements Serializable {
-
-    private static final long serialVersionUID = 4316867483368466L;
+public class Event {
 
     /** An instance of the {@link EventWorker} interface that defines the action to take when the event is triggered */
     private final EventWorker worker;

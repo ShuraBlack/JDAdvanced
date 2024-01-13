@@ -179,6 +179,17 @@ public abstract class EventWorker {
         throw new ImplementationException(MSG);
     }
 
+    /**
+     * <p>
+     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link EntitySelectInteractionEvent}
+     * <br><br>
+     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * </p>
+     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
+     * @param channel is were the {@link net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu Event} got called
+     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenu SelectMenu} object
+     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     */
     public void processEntitySelectEvent(final Member member, final MessageChannelUnion channel, final String compID, final EntitySelectInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
@@ -191,10 +202,10 @@ public abstract class EventWorker {
      * </p>
      * @param source is a independent discord user object, which called the context
      * @param target is a independent discord user object, which is the target of the call
-     * @param textID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
+     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
-    public void processGlobalUserContextEvent(final User source, final User target, final String textID, final UserContextInteractionEvent event) {
+    public void processGlobalUserContextEvent(final User source, final User target, final String compID, final UserContextInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 
@@ -206,10 +217,10 @@ public abstract class EventWorker {
      * </p>
      * @param source is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents the calling discord user
      * @param target is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents the targeted discord user
-     * @param textID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
+     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
-    public void processGuildUserContextEvent(final Member source, final Member target, final String textID, final UserContextInteractionEvent event) {
+    public void processGuildUserContextEvent(final Member source, final Member target, final String compID, final UserContextInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 
@@ -221,10 +232,10 @@ public abstract class EventWorker {
      * </p>
      * @param user is a independent discord user object, which called the context
      * @param channel is were the {@link MessageContextInteractionEvent Event} got called
-     * @param textID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
+     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
-    public void processGlobalMessageContextEvent(final User user, final MessageChannelUnion channel, final String textID, final MessageContextInteractionEvent event) {
+    public void processGlobalMessageContextEvent(final User user, final MessageChannelUnion channel, final String compID, final MessageContextInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 
@@ -234,12 +245,12 @@ public abstract class EventWorker {
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
-     * @param source is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
+     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
      * @param channel is were the {@link MessageContextInteractionEvent Event} got called
-     * @param textID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
+     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
-    public void processGuildMessageContextEvent(final Member source, final MessageChannelUnion channel, final String textID, final MessageContextInteractionEvent event) {
+    public void processGuildMessageContextEvent(final Member member, final MessageChannelUnion channel, final String compID, final MessageContextInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 }

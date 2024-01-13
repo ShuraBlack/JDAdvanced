@@ -1,5 +1,6 @@
 package de.shurablack.core.util;
 
+import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONException;
@@ -76,12 +77,12 @@ public class FileUtil {
 
     /**
      * This is a static method that loads the JSON from a JSON file
-     * @param filePath the path to the properties file including its name
+     * @param path the path to the properties file including its name
      * @return the {@link JSONObject} or null
      */
-    public static JSONObject loadJson(final String filePath) {
+    public static JSONObject loadJson(final String path) {
         final StringBuilder contentBuilder = new StringBuilder();
-        try (final BufferedReader br = new BufferedReader(new FileReader(filePath)))
+        try (final BufferedReader br = new BufferedReader(new FileReader(path)))
         {
 
             String sCurrentLine;
@@ -93,7 +94,7 @@ public class FileUtil {
             return new JSONObject(contentBuilder.toString());
         }
         catch (IOException e) {
-            final String msg = String.format("Couldnt load json file <%s>", filePath);
+            final String msg = String.format("Couldnt load json file <%s>", path);
             LOGGER.error(msg);
         } catch (JSONException e) {
             LOGGER.error("File couldnt be parsed into an JSONObject");
@@ -103,15 +104,34 @@ public class FileUtil {
     }
 
     /**
+     * Converts a file to an JDA usable {@link FileUpload}.
+     * @param file the file Object ({@link AssetPool} is cabable of storing)
+     * @param name the representive name for the file
+     * @return the FileUpload or null
+     */
+    public static FileUpload toFileUpload(final File file, final String name) {
+        if (!file.exists()) {
+            return null;
+        }
+
+        try (final InputStream target = new FileInputStream(file)) {
+            return FileUpload.fromData(target, name);
+        } catch (IOException e) {
+            LOGGER.error("Something went wrong, while opening the file stream", e);
+        }
+        return null;
+    }
+
+    /**
      * This is a static method that loads an image from an image file
-     * @param filePath the path to the properties file including its name
+     * @param path the path to the properties file including its name
      * @return the {@link Image} or null
      */
-    public static Image loadImage(final String filePath) {
+    public static Image loadImage(final String path) {
         try {
-            return ImageIO.read(new File(filePath));
+            return ImageIO.read(new File(path));
         } catch (IOException e) {
-            final String msg = String.format("Couldnt load image file <%s>", filePath);
+            final String msg = String.format("Couldnt load image file <%s>", path);
             LOGGER.error(msg);
         }
         return null;

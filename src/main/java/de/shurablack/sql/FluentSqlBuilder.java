@@ -89,15 +89,15 @@ public class FluentSqlBuilder implements Serializable {
      * Convenience Method to make multiple changes in one request.
      * <br><b>This is a closed SQL Request.</b>
      * @param table the specified table
-     * @param colums the specified colums in the table, which will be updated
+     * @param columns the specified colums in the table, which will be updated
      * @param values the data which will be updated (use {@link FluentSqlBuilder#VALUE(String...)} to wrap the data)
      * @return the builder for chaining
      */
-    public FluentSqlBuilder UPDATE_CHAIN(final String table, final List<String> colums, List<String> values) {
-        sql.append("INSERT INTO ").append(table).append(" (").append(String.join(", ", colums)).append(")")
+    public FluentSqlBuilder UPDATE_CHAIN(final String table, final List<String> columns, List<String> values) {
+        sql.append("INSERT INTO ").append(table).append(" (").append(String.join(", ", columns)).append(")")
                 .append(" VALUES ").append(String.join(",", values))
                 .append(" ON DUPLICATE KEY UPDATE ")
-                .append(colums.stream().map(col -> String.format("%s=VALUES(%s)", col, col)).collect(Collectors.joining(",")));
+                .append(columns.stream().map(col -> String.format("%s=VALUES(%s)", col, col)).collect(Collectors.joining(",")));
         return this;
     }
 
