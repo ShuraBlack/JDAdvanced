@@ -60,6 +60,7 @@ public class DefaultSlashReceiver extends ListenerAdapter {
     public void onMessageContextInteraction(@NotNull MessageContextInteractionEvent event) {
         if (event.isFromGuild()) {
             handler.onGuildMessageContextEvent(event.getName(), event);
+            return;
         }
 
         handler.onGlobalMessageContextEvent(event.getName(), event);
