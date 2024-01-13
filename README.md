@@ -2,7 +2,6 @@
 JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
 > ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am a student pursuing a degree in applied computer science.
-> Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
 
 ## License
 This project is licensed under the **Apache 2.0** license.<br>
