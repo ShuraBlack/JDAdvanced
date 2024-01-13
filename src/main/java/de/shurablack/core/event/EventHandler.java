@@ -22,6 +22,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -102,23 +103,45 @@ public class EventHandler {
      */
     public EventHandler registerEvent(final InteractionSet... set) {
         for (InteractionSet os : set) {
-            for (Interaction o : os.getInteractions()) {
-                final Event event = new Event(
-                        os.getWorker(),
-                        o.getGlobalCooldown(),
-                        o.getUserCooldown(),
-                        o.getChannelRestriction()
-                );
-                this.events.get(o.getType()).put(o.getIdentifier(),event);
-
-            }
-            LOGGER.info(String.format("Register - Type/s: %s, Identifier/s: %s"
-                    , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getType().name()
-                            + "\u001B[0m").collect(Collectors.joining(", "))
-                    , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getIdentifier()
-                            + "\u001B[0m").collect(Collectors.joining(", "))));
+            registerEventSubRoutine(os);
         }
         return this;
+    }
+
+    /**
+     * Registers a set of events with the EventHandler object
+     * @param set of events which will be created
+     * @return the handler for chaining
+     */
+    public EventHandler registerEvent(final List<InteractionSet> set) {
+        for (InteractionSet os : set) {
+            registerEventSubRoutine(os);
+        }
+        return this;
+    }
+
+    /**
+     * Registers a set of events with the EventHandler object.
+     * <br><br>
+     * This method is used to register a single event.
+     * @param os the event which will be created
+     */
+    private void registerEventSubRoutine(InteractionSet os) {
+        for (Interaction o : os.getInteractions()) {
+            final Event event = new Event(
+                    os.getWorker(),
+                    o.getGlobalCooldown(),
+                    o.getUserCooldown(),
+                    o.getChannelRestriction()
+            );
+            this.events.get(o.getType()).put(o.getIdentifier(),event);
+
+        }
+        LOGGER.info(String.format("Register - Type/s: %s, Identifier/s: %s"
+                , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getType().name()
+                        + "\u001B[0m").collect(Collectors.joining(", "))
+                , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getIdentifier()
+                        + "\u001B[0m").collect(Collectors.joining(", "))));
     }
 
     /**
