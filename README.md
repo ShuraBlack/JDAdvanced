@@ -1,8 +1,7 @@
 # JDAdvanced
 JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
-> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am an eighth-semester student pursuing a degree in applied computer science.
-> Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
+> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am a student pursuing a degree in applied computer science.
 
 ## License
 This project is licensed under the **Apache 2.0** license.<br>
@@ -15,7 +14,7 @@ or check the <b>LICENSE</b> file in the project
 
 This project requires Java 8+ [SDK](https://www.oracle.com/java/technologies/downloads/)<br>
 All dependencies are managed by [Maven](https://maven.apache.org)
-- [JDA](https://github.com/discord-jda/JDA) - **5.0.0-beta.10**
+- [JDA](https://github.com/discord-jda/JDA) - **5.0.0-beta.19**
 - [Discord-Webhooks](https://github.com/MinnDevelopment/discord-webhooks) - **0.8.2**
 - [Log4j Core](https://github.com/apache/logging-log4j2) - **2.20.0**
 - [Log4j API](https://github.com/apache/logging-log4j2) - **2.0.5**
@@ -23,7 +22,7 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [JCABI-Log](https://github.com/jcabi/jcabi-log) - **0.22.0**
 - [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
-- [Json](https://github.com/stleary/JSON-java) - **20230618**
+- [Json](https://github.com/stleary/JSON-java) - **20231013**
 
 ## Packages
 - **core** -> Main classess of the project
@@ -98,6 +97,38 @@ final EventHandler handler = EventHandler.create()
       Interaction.create(GUILD_SLASH, "identifier").setChannelRestriction(List.of(...))
     )
   );
+```
+Alternatively you can use a JSON file to declare your InteractionSets
+```json
+{"interactionSets": [{
+  "worker": "de.shurablack.core.event.Test",
+  "interactions": [
+    {
+      "identifier": "identifier",
+      "globalCooldown": 1000,
+      "userCooldown": 1000,
+      "type": "BUTTON",
+      "channelRestriction": [
+        "channelID",
+        "channelID"
+      ]
+    },
+    {
+      "identifier": "identifier",
+      "globalCooldown": -1,
+      "userCooldown": -1,
+      "type": "MODAL",
+      "channelRestriction": [
+        "channelID",
+        "channelID"
+      ]
+    }
+  ]
+}]}
+```
+and load it via
+```java
+List<InteractionSet> InteractionSet.loadFromJSON("path/to/file.json")
 ```
 
 
