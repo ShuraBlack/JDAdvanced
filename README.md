@@ -1,5 +1,5 @@
 # JDAdvanced
-JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
+JDAdvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
 > ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am a student pursuing a degree in applied computer science.
 > Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
@@ -28,6 +28,7 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
+- **localization** -> Managing the localization of your response texts
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
 
@@ -133,7 +134,7 @@ Alternatively you can use a JSON file to declare your InteractionSets
 ```
 and load it via
 ```java
-List<InteractionSet> InteractionSet.loadFromJSON("path/to/file.json")
+List<InteractionSet> InteractionSet.fromJSON("path/to/file.json")
 ```
 
 
