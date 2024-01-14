@@ -84,9 +84,9 @@ To declare functions of an EventWorker as active, you can utilize the Interactio
 **Example:**
 
 ```java
-final EventHandler handler = EventHandler.create()
+final EventHandler handler = EventHandler
   // Set Prefix for Messages and boolean for ingoreBotRequests
-  .set(EventHandler.DEFAULT_PREFIX, true)
+  .create(EventHandler.DEFAULT_PREFIX, true)
   .registerEvent(
     InteractionSet().create(
       new EventWorkerA(),
