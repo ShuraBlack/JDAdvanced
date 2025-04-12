@@ -1,5 +1,5 @@
 # JDAdvanced
-JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
+JDAdvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
 > ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine.
 
@@ -29,6 +29,7 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
+- **localization** -> Managing the localization of your response texts
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
 - **localization** -> Translation and timezones
@@ -85,9 +86,9 @@ To declare functions of an EventWorker as active, you can utilize the Interactio
 **Example:**
 
 ```java
-final EventHandler handler = EventHandler.create()
+final EventHandler handler = EventHandler
   // Set Prefix for Messages and boolean for ingoreBotRequests
-  .set(EventHandler.DEFAULT_PREFIX, true)
+  .create(EventHandler.DEFAULT_PREFIX, true)
   .registerEvent(
     InteractionSet().create(
       new EventWorkerA(),
@@ -103,31 +104,35 @@ final EventHandler handler = EventHandler.create()
 ```
 Alternatively you can use a JSON file to declare your InteractionSets
 ```json
-{"interactionSets": [{
-  "worker": "de.shurablack.core.event.Test",
-  "interactions": [
+{
+  "interactionSets": [
     {
-      "identifier": "identifier",
-      "globalCooldown": 1000,
-      "userCooldown": 1000,
-      "format": "BUTTON",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
-      ]
-    },
-    {
-      "identifier": "identifier",
-      "globalCooldown": -1,
-      "userCooldown": -1,
-      "format": "MODAL",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
+      "worker": "de.shurablack.core.event.Test",
+      "interactions": [
+        {
+          "identifier": "identifier",
+          "globalCooldown": 1000,
+          "userCooldown": 1000,
+          "type": "BUTTON",
+          "channelRestriction": [
+            "channelID",
+            "channelID"
+          ]
+        },
+        {
+          "identifier": "identifier",
+          "globalCooldown": -1,
+          "userCooldown": -1,
+          "type": "MODAL",
+          "channelRestriction": [
+            "channelID",
+            "channelID"
+          ]
+        }
       ]
     }
   ]
-}]}
+}
 ```
 and load it via
 ```java
