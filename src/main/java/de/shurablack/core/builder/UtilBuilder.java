@@ -1,7 +1,6 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.EventHandler;
-import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
 import de.shurablack.core.util.ConfigException;
@@ -64,7 +63,6 @@ public class UtilBuilder {
      */
     public static void init() {
         Config.loadConfig();
-        Dispatcher.start();
         AssetPool.init();
         LocalData.init();
         INIT = true;
@@ -165,10 +163,11 @@ public class UtilBuilder {
     /**
      * This method builds and returns the JDAUtil object that is being constructed by this UtilBuilder.
      * <br><br>
-     * The command line interface will be started on a successful connection to the Discord bot API.
+     * It also starts the command-line interface for the Discord bot.
      * @return the build {@link JDAUtil}
      */
     public JDAUtil build() {
+        this.JDAUtil.startCommandLine();
         return this.JDAUtil;
     }
 }

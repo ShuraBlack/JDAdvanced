@@ -4,17 +4,10 @@ import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbedBuilder;
 import de.shurablack.core.scheduling.Dispatcher;
-import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.List;
 
 /**
  * <p>
@@ -89,64 +82,5 @@ public class ServerUtil {
 
         client.send(builder.build());
         client.close();
-    }
-
-    /**
-     * Copies the permissions from one role to another in all channels
-     * @param guild the specified {@link Guild}
-     * @param sourceId the {@link Role#getId()} of the source role
-     * @param targetId the {@link Role#getId()} of the target role
-     */
-    public static void copyPermissionsToAllChannel(Guild guild, String sourceId, String targetId) {
-        Role source = guild.getRoleById(sourceId);
-        Role target = guild.getRoleById(targetId);
-        List<GuildChannel> channels = guild.getChannels();
-
-        if (source == null || target == null) {
-            GLOBAL_LOGGER.error("Role/s not found!");
-            return;
-        }
-
-        GLOBAL_LOGGER.info("Copying permissions from {} to {}", source.getName(), target.getName());
-        GLOBAL_LOGGER.info("Found {} channels", channels.size());
-
-        int count = 1;
-
-        for (GuildChannel channel : channels) {
-            GLOBAL_LOGGER.info("[{}/{}] Channel: {}", count++, channels.size(), channel.getName());
-            PermissionOverride override = channel.getPermissionContainer().getPermissionOverride(source);
-            if (override != null) {
-
-                try {
-                    PermissionOverrideAction action = channel.getPermissionContainer().upsertPermissionOverride(target);
-                    action = action.setAllowed(override.getAllowed());
-                    action = action.setDenied(override.getDenied());
-                    action.queue();
-
-                    Thread.sleep(1000);
-                } catch (Exception e) {
-                    GLOBAL_LOGGER.error("Failed to copy permissions for channel {}", channel.getName());
-                }
-            }
-        }
-    }
-
-    /**
-     * Copies the permissions from one role to another in a specific channel
-     * @param channel the specified {@link GuildChannel}
-     * @param source the source {@link Role}
-     * @param target the target {@link Role}
-     */
-    public static void copyPermissionsTo(GuildChannel channel, Role source, Role target) {
-        PermissionOverride override = channel.getPermissionContainer().getPermissionOverride(source);
-        if (override != null) {
-            PermissionOverrideAction action = channel.getPermissionContainer().upsertPermissionOverride(target);
-            action = action.setAllowed(override.getAllowed());
-            action = action.setDenied(override.getDenied());
-            action.queue();
-            GLOBAL_LOGGER.info("Copied permissions for channel {}", channel.getName());
-        } else {
-            GLOBAL_LOGGER.error("Failed to copy permissions for channel {}", channel.getName());
-        }
     }
 }

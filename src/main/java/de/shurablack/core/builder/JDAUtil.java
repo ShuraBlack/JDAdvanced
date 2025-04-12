@@ -2,12 +2,9 @@ package de.shurablack.core.builder;
 
 import de.shurablack.core.event.EventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
-import de.shurablack.core.util.LocalData;
 import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.events.session.ReadyEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,7 +27,7 @@ import java.util.function.Consumer;
  *
  * <p>
  * The JDAUtil class is a Java class that provides a way to interact with a Discord bot
- * , as well as using a command-line interface
+ * , aswell as using a command-line interface
  * <br>
  * It can only be created via the {@link UtilBuilder}.
  * <br>
@@ -70,21 +67,7 @@ public class JDAUtil {
      */
     JDAUtil(final JDA jda, final EventHandler handler) {
         JDA = jda;
-        JDA.addEventListener(new ListenerAdapter() {
-            @Override
-            public void onReady(ReadyEvent event) {
-                startCommandLine();
-            }
-        });
         this.handler = handler;
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            LOGGER.info("Application gets terminated ...");
-            Dispatcher.shutdownService();
-            if (this.onExit != null) {
-                onExit.accept("");
-            }
-        }));
     }
 
     /**
@@ -142,28 +125,6 @@ public class JDAUtil {
      */
     void startCommandLine() {
         addAction(new CommandAction(
-                "force cron",
-                "<name> Forces a cron task with given name",
-                input -> {
-                    final String[] split = input.split(" ");
-                    if (split.length < 3) {
-                        LOGGER.error("Invalid input: force cron <name>");
-                        return;
-                    }
-                    Dispatcher.forceCronTask(split[2]);
-                }
-        ));
-        addAction(new CommandAction(
-                "reload local",
-                "Reloads the LocalData",
-                input -> {
-                    LOGGER.info("Reloading LocalData ...");
-                    LocalData.clear();
-                    LocalData.init();
-                    LOGGER.info("LocalData reloaded");
-                }
-        ));
-        addAction(new CommandAction(
                 "exit",
                 "Closes the Application",
                 input -> {
@@ -175,18 +136,14 @@ public class JDAUtil {
                     System.exit(1);
                 }
         ));
-        addAction(new CommandAction(
-                "dispatcher",
-                "Shows dispatcher debug",
-                input -> Dispatcher.logStatus()
-        ));
         new Thread(() -> {
             String line;
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
             try {
                 System.out.println("\n====================================================\n" +
-                        "-> Command Line Interface is ready <-\n" +
+                        "> Welcome to JDAUtil command line.\n" +
+                        "Discord Bot fully started and is ready to use.\n" +
                         "Made by ShuraBlack" +
                         "\n====================================================\n" +
                         "Available Commands:" +

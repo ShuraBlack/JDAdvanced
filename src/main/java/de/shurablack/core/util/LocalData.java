@@ -55,7 +55,7 @@ public class LocalData {
     private static final Properties ROLEIDS = new Properties();
 
     /** Name of the temp file*/
-    private static final String TEMP_FILE = "properties/temp.properties";
+    private static final String TEMP_FILE = "temp.properties";
 
     private LocalData() { }
 
@@ -66,19 +66,6 @@ public class LocalData {
     public static void init() {
         fileCheck();
         loadFiles();
-    }
-
-    /**
-     * Clears all the stored data in memory
-     */
-    public static void clear() {
-        CATEGORYIDS.clear();
-        CHANNELIDS.clear();
-        MESSAGEIDS.clear();
-        WEBHOOKS.clear();
-        EMOJIIDS.clear();
-        ROLEIDS.clear();
-        TEMPS.clear();
     }
 
     /**
@@ -122,18 +109,13 @@ public class LocalData {
      */
     private static void fileCheck() {
         try {
-            File folder = new File("properties");
-            if (!folder.exists() && !folder.mkdir()) {
-                LOGGER.error("Couldnt create properties folder. Check the permissions!");
-                System.exit(1);
-            }
-            singleFile("properties/category_id.properties", "# Add category with <name>=<category_id>");
-            singleFile("properties/channel_id.properties", "# Add channel with <name>=<channel_id>");
-            singleFile("properties/message_id.properties", "# Add message with <name>=<message_id>");
-            singleFile("properties/webhook_link.properties", "# Add webhook with <name>=<webhook_link>");
-            singleFile("properties/emoji_id.properties", "# Add emoji with <name>=<emoji_id>");
-            singleFile("properties/role_id.properties", "# Add role with <name>=<role_id>");
-            singleFile(TEMP_FILE,"# Add local properties with <key>=<value>");
+            singleFile("category_id.properties", "# Add category with <name>=<category_id>");
+            singleFile("channel_id.properties", "# Add channel with <name>=<channel_id>");
+            singleFile("message_id.properties", "# Add message with <name>=<message_id>");
+            singleFile("webhook_link.properties", "# Add webhook with <name>=<webhook_link>");
+            singleFile("emoji_id.properties", "# Add emoji with <name>=<emoji_id>");
+            singleFile("role_id.properties", "# Add role with <name>=<role_id>");
+            singleFile("tmp.properties","# Add local properties with <key>=<value>");
         } catch (FileNotFoundException e) {
             LOGGER.warn("Couldnt create properties files", e);
         } catch (IOException e) {
@@ -145,12 +127,12 @@ public class LocalData {
      * Helper method that loads the necessary files into memory.
      */
     private static void loadFiles() {
-        CATEGORYIDS.putAll(FileUtil.loadProperties("properties/category_id.properties"));
-        CHANNELIDS.putAll(FileUtil.loadProperties("properties/channel_id.properties"));
-        MESSAGEIDS.putAll(FileUtil.loadProperties("properties/message_id.properties"));
-        WEBHOOKS.putAll(FileUtil.loadProperties("properties/webhook_link.properties"));
-        EMOJIIDS.putAll(FileUtil.loadProperties("properties/emoji_id.properties"));
-        ROLEIDS.putAll(FileUtil.loadProperties("properties/role_id.properties"));
+        CATEGORYIDS.putAll(FileUtil.loadProperties("category_id.properties"));
+        CHANNELIDS.putAll(FileUtil.loadProperties("channel_id.properties"));
+        MESSAGEIDS.putAll(FileUtil.loadProperties("message_id.properties"));
+        WEBHOOKS.putAll(FileUtil.loadProperties("webhook_link.properties"));
+        EMOJIIDS.putAll(FileUtil.loadProperties("emoji_id.properties"));
+        ROLEIDS.putAll(FileUtil.loadProperties("role_id.properties"));
         TEMPS.putAll(FileUtil.loadProperties(TEMP_FILE));
     }
 
