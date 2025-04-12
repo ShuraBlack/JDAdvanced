@@ -1,7 +1,7 @@
 # JDAdvanced
-JDAdvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
+JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
-> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am a student pursuing a degree in applied computer science.
+> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine
 > Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
 
 ## License
@@ -15,7 +15,7 @@ or check the <b>LICENSE</b> file in the project
 
 This project requires Java 8+ [SDK](https://www.oracle.com/java/technologies/downloads/)<br>
 All dependencies are managed by [Maven](https://maven.apache.org)
-- [JDA](https://github.com/discord-jda/JDA) - **5.0.0-beta.19**
+- [JDA](https://github.com/discord-jda/JDA) - **5.3.2**
 - [Discord-Webhooks](https://github.com/MinnDevelopment/discord-webhooks) - **0.8.2**
 - [Log4j Core](https://github.com/apache/logging-log4j2) - **2.20.0**
 - [Log4j API](https://github.com/apache/logging-log4j2) - **2.0.5**
@@ -24,13 +24,15 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
 - [Json](https://github.com/stleary/JSON-java) - **20231013**
+- [Classgraph](https://github.com/classgraph/classgraph) - **4.8.179**
+- [JUnit](https://github.com/junit-team/junit5) - **5.13.0-M2** *(Test scope)*
 
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
-- **localization** -> Managing the localization of your response texts
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
+- **localization** -> Language and timezone handling
 
 ## Download
 Currently this project only supports [GitHub Realse](https://github.com/ShuraBlack/JDAdvanced/releases) with a **.jar**.
@@ -84,9 +86,9 @@ To declare functions of an EventWorker as active, you can utilize the Interactio
 **Example:**
 
 ```java
-final EventHandler handler = EventHandler
+final EventHandler handler = EventHandler.create()
   // Set Prefix for Messages and boolean for ingoreBotRequests
-  .create(EventHandler.DEFAULT_PREFIX, true)
+  .set(EventHandler.DEFAULT_PREFIX, true)
   .registerEvent(
     InteractionSet().create(
       new EventWorkerA(),
@@ -102,39 +104,40 @@ final EventHandler handler = EventHandler
 ```
 Alternatively you can use a JSON file to declare your InteractionSets
 ```json
-{
-  "interactionSets": [
+{"interactionSets": [{
+  "worker": "de.shurablack.core.event.Test",
+  "interactions": [
     {
-      "worker": "de.shurablack.core.event.Test",
-      "interactions": [
-        {
-          "identifier": "identifier",
-          "globalCooldown": 1000,
-          "userCooldown": 1000,
-          "type": "BUTTON",
-          "channelRestriction": [
-            "channelID",
-            "channelID"
-          ]
-        },
-        {
-          "identifier": "identifier",
-          "globalCooldown": -1,
-          "userCooldown": -1,
-          "type": "MODAL",
-          "channelRestriction": [
-            "channelID",
-            "channelID"
-          ]
-        }
+      "identifier": "identifier",
+      "globalCooldown": 1000,
+      "userCooldown": 1000,
+      "format": "BUTTON",
+      "channelRestriction": [
+        "channelID",
+        "channelID"
+      ]
+    },
+    {
+      "identifier": "identifier",
+      "globalCooldown": -1,
+      "userCooldown": -1,
+      "format": "MODAL",
+      "channelRestriction": [
+        "channelID",
+        "channelID"
       ]
     }
   ]
-}
+}]}
 ```
 and load it via
 ```java
-List<InteractionSet> InteractionSet.fromJSON("path/to/file.json")
+List<InteractionSet> list = InteractionSet.fromJson("path/to/file.json");
+```
+or use the new annotation style to annotate your EventWorker class.
+This will automatically register the EventWorker and all its interactions.
+```java
+List<InteractionSet> list = InteractionSet.fromAnnotation();
 ```
 
 
