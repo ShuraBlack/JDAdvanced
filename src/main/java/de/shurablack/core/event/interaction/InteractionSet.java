@@ -1,11 +1,24 @@
 package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
+import de.shurablack.core.event.annotation.DisabledWorker;
+import de.shurablack.core.event.annotation.EventProcess;
+import de.shurablack.core.event.annotation.ExtendedEventProcess;
+import de.shurablack.core.event.annotation.RedirectedProcess;
 import de.shurablack.core.util.FileUtil;
+import de.shurablack.core.util.LocalData;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfo;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -93,7 +106,7 @@ public class InteractionSet {
                     JSONArray channelRestriction = interaction.getJSONArray("channelRestriction");
                     List<String> channelRestrictionList = new ArrayList<>();
                     for (int i = 0; i < channelRestriction.length(); i++) {
-                        channelRestrictionList.add(channelRestriction.getString(i));
+                        channelRestrictionList.add(LocalData.getChannelID(channelRestriction.getString(i)));
                     }
                     Interaction interactionObject = Interaction.create(type, identifier)
                             .setGlobalCD(globalCooldown)
@@ -112,6 +125,97 @@ public class InteractionSet {
             e.printStackTrace();
             return new ArrayList<>();
         }
+        return interactionSets;
+    }
+
+    /**
+     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * <br><br>
+     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
+     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     *
+     * @see EventProcess
+     * @see RedirectedProcess
+     * @see ExtendedEventProcess
+     * @see DisabledWorker
+     * @return the list of InteractionSets
+     */
+    public static List<InteractionSet> fromAnnotation() {
+        final Logger logger = LogManager.getLogger(InteractionSet.class);
+        final List<InteractionSet> interactionSets = new ArrayList<>();
+
+        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+            ClassInfoList classes = result.getSubclasses(EventWorker.class);
+
+            for (ClassInfo info : classes) {
+                Class<?> workerClass = info.loadClass();
+                if (Modifier.isAbstract(workerClass.getModifiers())) {
+                    continue;
+                }
+                if (workerClass.isAnnotationPresent(DisabledWorker.class)) {
+                    logger.debug("Worker {} is disabled", workerClass.getName());
+                    continue;
+                }
+                EventWorker worker = (EventWorker) workerClass.getDeclaredConstructor().newInstance();
+
+                List<Interaction> interactionsList = new ArrayList<>();
+
+                if (workerClass.isAnnotationPresent(RedirectedProcess.class)) {
+                    RedirectedProcess redirectedProcess = workerClass.getAnnotation(RedirectedProcess.class);
+
+                    for (ExtendedEventProcess extended : redirectedProcess.value()) {
+                        Interaction interactionObject = Interaction.create(extended.type(), extended.identifier())
+                                .setGlobalCD(extended.globalCooldown())
+                                .setUserCD(extended.userCooldown())
+                                .setChannelRestriction(Arrays.asList(extended.restrictedChannel()));
+                        interactionsList.add(interactionObject);
+                    }
+
+                    if (interactionsList.isEmpty()) {
+                        continue;
+                    }
+                    InteractionSet interactionSetObject = InteractionSet.create(
+                            worker,
+                            interactionsList.toArray(new Interaction[0])
+                    );
+                    interactionSets.add(interactionSetObject);
+                    continue;
+                }
+
+                for (Method method : workerClass.getDeclaredMethods()) {
+                    if (!method.isAnnotationPresent(EventProcess.class)) {
+                        continue;
+                    }
+                    final Type type = Type.fromFunctionName(method.getName());
+                    if (type == null) {
+                        logger.warn("Method {} in {} has no valid type", method.getName(), workerClass.getName());
+                        continue;
+                    }
+
+                    EventProcess eventProcess = method.getAnnotation(EventProcess.class);
+
+                    Interaction interactionObject = Interaction.create(type, eventProcess.identifier())
+                            .setGlobalCD(eventProcess.globalCooldown())
+                            .setUserCD(eventProcess.userCooldown())
+                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()));
+                    interactionsList.add(interactionObject);
+                }
+
+                if (interactionsList.isEmpty()) {
+                    continue;
+                }
+
+                InteractionSet interactionSetObject = InteractionSet.create(
+                        worker,
+                        interactionsList.toArray(new Interaction[0])
+                );
+                interactionSets.add(interactionSetObject);
+            }
+            logger.info("Found {} EventWorker classes", classes.size());
+        } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | InstantiationException e) {
+            logger.error("Error while creating EventWorker classes", e);
+        }
+
         return interactionSets;
     }
 

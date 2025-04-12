@@ -3,6 +3,8 @@ package de.shurablack.core.util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Map;
 import java.util.Properties;
@@ -30,8 +32,8 @@ public class AssetPool {
     /** Map object for storing the data */
     private static final Map<String, String> ASSETS = new ConcurrentHashMap<>();
 
-    /** Map object for storing files (like images) */
-    private static final Map<String, File> FILE_ASSETS = new ConcurrentHashMap<>();
+    /** Map object for storing images */
+    private static final Map<String, BufferedImage> IMAGE_ASSETS = new ConcurrentHashMap<>();
 
     /** Name of assets file*/
     private static final String ASSETS_FILE = "assets.properties";
@@ -54,9 +56,15 @@ public class AssetPool {
                         LOGGER.info(String.format("Couldnt find file <%s>", entry.getValue()));
                         continue;
                     }
-                    FILE_ASSETS.put((String) entry.getKey(), reference);
+                    try {
+                        final BufferedImage image = ImageIO.read(reference);
+                        IMAGE_ASSETS.put((String) entry.getKey(), image);
+                    } catch (IOException e) {
+                        LOGGER.error(String.format("Couldnt load image <%s>", entry.getValue()));
+                    }
                 }
             }
+            return;
         }
         try (final OutputStream out = new FileOutputStream(file)) {
             final String msg = "# Add channel with <url_name/file_name>=<source>\n" +
@@ -81,12 +89,12 @@ public class AssetPool {
      * @return true if the asset got successfully removed
      */
     public static boolean remove(final String name) {
-        return ASSETS.remove(name) != null || FILE_ASSETS.remove(name) != null;
+        return ASSETS.remove(name) != null || IMAGE_ASSETS.remove(name) != null;
     }
 
     /**
      * This is a static method that adds an asset to the pool.
-     * Local files need to be specified with an "file" and paths or links with an "url"
+     * Local images need to be specified with an "img" and links with an "url"
      * @param name the name of the asset
      * @param source the source of the asset (URL or path)
      * @return true if the asset got successfully loaded
@@ -97,7 +105,13 @@ public class AssetPool {
             if (!file.exists()) {
                 return false;
             }
-            return FILE_ASSETS.put(name, file) == null;
+            try {
+                final BufferedImage image = ImageIO.read(file);
+                IMAGE_ASSETS.put(name, image);
+            } catch (IOException e) {
+                LOGGER.error(String.format("Couldnt load image <%s>", source));
+                return false;
+            }
         }
         if (name.startsWith("url")) {
             return ASSETS.put(name, source) == null;
@@ -117,9 +131,9 @@ public class AssetPool {
     /**
      * This is a static method that retrieves an asset from the pool
      * @param name the name of the asset
-     * @return the asset file
+     * @return the asset image
      */
-    public static File getFile(final String name) {
-        return FILE_ASSETS.get(name);
+    public static BufferedImage getFile(final String name) {
+        return IMAGE_ASSETS.get(name);
     }
 }
