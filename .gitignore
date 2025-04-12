@@ -8,6 +8,9 @@
 # User-specific stuff
 .idea/
 docs/
+/*.properties
+target/
+properties/
 
 # AWS User-specific
 .idea/**/aws.xml
