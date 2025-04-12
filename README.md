@@ -108,7 +108,7 @@ Alternatively you can use a JSON file to declare your InteractionSets
       "identifier": "identifier",
       "globalCooldown": 1000,
       "userCooldown": 1000,
-      "type": "BUTTON",
+      "format": "BUTTON",
       "channelRestriction": [
         "channelID",
         "channelID"
@@ -118,7 +118,7 @@ Alternatively you can use a JSON file to declare your InteractionSets
       "identifier": "identifier",
       "globalCooldown": -1,
       "userCooldown": -1,
-      "type": "MODAL",
+      "format": "MODAL",
       "channelRestriction": [
         "channelID",
         "channelID"

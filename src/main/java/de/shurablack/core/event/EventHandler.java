@@ -3,11 +3,15 @@ package de.shurablack.core.event;
 import de.shurablack.core.event.interaction.Interaction;
 import de.shurablack.core.event.interaction.InteractionSet;
 import de.shurablack.core.event.interaction.Type;
+import de.shurablack.core.event.validation.Validation;
+import de.shurablack.core.event.validation.ValidationEvent;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.listener.DefaultInteractionReceiver;
 import de.shurablack.listener.DefaultMessageReceiver;
 import de.shurablack.listener.DefaultReactionReceiver;
 import de.shurablack.listener.DefaultSlashReceiver;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
@@ -18,10 +22,12 @@ import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionE
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -57,6 +63,12 @@ public class EventHandler {
     /** Indicating whether requests from other bots should be ignored */
     private boolean ignoreBotRequest = true;
 
+    /** Indicating whether error feedback should be sent */
+    private boolean errorCallback = true;
+
+    /** Indicating whether the admin bypass is enabled */
+    private boolean adminBypass = false;
+
     /**
      * A concurrent hash map that maps event types to maps of event identifier strings to Event objects
      */
@@ -88,10 +100,12 @@ public class EventHandler {
      * @param ignoreBotRequest the ignore flag
      * @return the handler for chaining
      */
-    public static EventHandler create(final String prefix, final boolean ignoreBotRequest) {
+    public static EventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
         final EventHandler handler = createDefault();
         PREFIX = prefix;
         handler.ignoreBotRequest = ignoreBotRequest;
+        handler.errorCallback = errorFeedback;
+        handler.adminBypass = adminBypass;
         return handler;
     }
 
@@ -102,34 +116,56 @@ public class EventHandler {
      */
     public EventHandler registerEvent(final InteractionSet... set) {
         for (InteractionSet os : set) {
-            for (Interaction o : os.getInteractions()) {
-                final Event event = new Event(
-                        os.getWorker(),
-                        o.getGlobalCooldown(),
-                        o.getUserCooldown(),
-                        o.getChannelRestriction()
-                );
-                this.events.get(o.getType()).put(o.getIdentifier(),event);
-
-            }
-            LOGGER.info(String.format("Register - Type/s: %s, Identifier/s: %s"
-                    , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getType().name()
-                            + "\u001B[0m").collect(Collectors.joining(", "))
-                    , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getIdentifier()
-                            + "\u001B[0m").collect(Collectors.joining(", "))));
+            registerEventSubRoutine(os);
         }
         return this;
     }
 
     /**
+     * Registers a set of events with the EventHandler object
+     * @param set of events which will be created
+     * @return the handler for chaining
+     */
+    public EventHandler registerEvent(final List<InteractionSet> set) {
+        for (InteractionSet os : set) {
+            registerEventSubRoutine(os);
+        }
+        return this;
+    }
+
+    /**
+     * Registers a set of events with the EventHandler object.
+     * <br><br>
+     * This method is used to register a single event.
+     * @param os the event which will be created
+     */
+    private void registerEventSubRoutine(InteractionSet os) {
+        for (Interaction o : os.getInteractions()) {
+            final Event event = new Event(
+                    os.getWorker(),
+                    o.getGlobalCooldown(),
+                    o.getUserCooldown(),
+                    o.getChannelRestriction()
+            );
+            this.events.get(o.getType()).put(o.getIdentifier(),event);
+
+        }
+        LOGGER.info(String.format("Register - Type/s: %s, Identifier/s: %s"
+                , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getType().name()
+                        + "\u001B[0m").collect(Collectors.joining(", "))
+                , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getIdentifier()
+                        + "\u001B[0m").collect(Collectors.joining(", "))));
+    }
+
+    /**
      * Checks whether the event is on cooldown for the given user
      * @param identifier the unique string of the event
-     * @param userID the unique ID of an discod user
+     * @param userID the unique ID of an discord user
      * @param event the event object
-     * @return true if there is a global or user cooldown stil activ
+     * @return true if there is a global or user cooldown still active
      */
     private boolean onCooldown(final String identifier, final String userID, final Event event) {
-        long time = System.nanoTime();
+        long time = System.currentTimeMillis();
         if (event.getGlobalCooldown() != Interaction.NO_COOLDOWN) {
             if (this.lastCallGlobal.containsKey(identifier)) {
                 long diff = time - this.lastCallGlobal.get(identifier);
@@ -174,10 +210,14 @@ public class EventHandler {
      */
     public void onButtonEvent(final String identifier, final ButtonInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.BUTTON, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processButtonEvent(event.getMember(),event.getChannel(), event.getButton().getId(), event);
+            final ValidationEvent e = isValidGuild(identifier, Type.BUTTON, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processButtonEvent(event.getMember(),event.getChannel(), event.getButton().getId(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -189,10 +229,14 @@ public class EventHandler {
      */
     public void onGlobalSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GLOBAL_SLASH, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGlobalSlashEvent(event.getUser(),event.getChannel().asPrivateChannel(), event.getName(), event);
+            final ValidationEvent e = isValid(identifier, Type.GLOBAL_SLASH, event.getUser(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGlobalSlashEvent(event.getUser(),event.getChannel().asPrivateChannel(), event.getName(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -204,10 +248,14 @@ public class EventHandler {
      */
     public void onGuildSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GUILD_SLASH, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGuildSlashEvent(event.getMember(),event.getChannel(), event.getName(), event);
+            final ValidationEvent e = isValidGuild(identifier, Type.GUILD_SLASH, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGuildSlashEvent(event.getMember(),event.getChannel(), event.getSubcommandName(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -219,10 +267,14 @@ public class EventHandler {
      */
     public void onModalEvent(final String identifier, final ModalInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.MODAL, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processModalEvent(event.getMember(),event.getChannel(), event.getModalId(), event);
+            final ValidationEvent e = isValidGuild(identifier, Type.MODAL, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processModalEvent(event.getMember(),event.getChannel(), event.getModalId(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -234,9 +286,10 @@ public class EventHandler {
      */
     public void onPrivateChannelEvent(final String identifier, final MessageReceivedEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.PRIVATE_CHANNEL, event.getAuthor(), event.getChannel().getId())) != null) {
-                e.getWorker().processPrivateChannelEvent(event.getAuthor(),event.getChannel().asPrivateChannel()
+            final ValidationEvent e = isValid(identifier, Type.PRIVATE_CHANNEL, event.getAuthor(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processPrivateChannelEvent(event.getAuthor(),event.getChannel().asPrivateChannel()
                         , event.getMessage().getContentRaw().replace(identifier,""), event);
             }
         });
@@ -250,9 +303,10 @@ public class EventHandler {
      */
     public void onPublicChannelEvent(final String identifier, final MessageReceivedEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.PUBLIC_CHANNEL, event.getAuthor(), event.getChannel().getId())) != null) {
-                e.getWorker().processPublicChannelEvent(event.getMember(),event.getChannel()
+            final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_CHANNEL, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processPublicChannelEvent(event.getMember(),event.getChannel()
                         , event.getMessage().getContentRaw().replace(identifier,""), event);
             }
         });
@@ -266,9 +320,10 @@ public class EventHandler {
      */
     public void onPrivateReactionEvent(final String identifier, final MessageReactionAddEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.PRIVATE_REACTION, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processPrivateReactionEvent(event.getUser(),event.getChannel().asPrivateChannel()
+            final ValidationEvent e = isValid(identifier, Type.PRIVATE_REACTION, event.getUser(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processPrivateReactionEvent(event.getUser(),event.getChannel().asPrivateChannel()
                         , event.getEmoji().getName(), event);
             }
         });
@@ -282,9 +337,10 @@ public class EventHandler {
      */
     public void onPublicReactionEvent(final String identifier, final MessageReactionAddEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.PUBLIC_REACTION, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processPublicReactionEvent(event.getMember(),event.getChannel()
+            final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_REACTION, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processPublicReactionEvent(event.getMember(),event.getChannel()
                         , event.getEmoji().getName(), event);
             }
         });
@@ -298,11 +354,15 @@ public class EventHandler {
      */
     public void onStringSelectionMenuEvent(final String identifier, final StringSelectInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processStringSelectEvent(event.getMember(),event.getChannel()
+            final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processStringSelectEvent(event.getMember(),event.getChannel()
                         , event.getInteraction().getComponentId(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -314,11 +374,15 @@ public class EventHandler {
      */
     public void onEntitySelectionMenuEvent(final String identifier, EntitySelectInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processEntitySelectEvent(event.getMember(),event.getChannel()
+            final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processEntitySelectEvent(event.getMember(),event.getChannel()
                         , event.getInteraction().getComponentId(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -330,11 +394,15 @@ public class EventHandler {
      */
     public void onGuildUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GUILD_USER_CONTEXT, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGuildUserContextEvent(event.getMember()
+            final ValidationEvent e = isValidGuild(identifier, Type.GUILD_USER_CONTEXT, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGuildUserContextEvent(event.getMember()
                         ,event.getTargetMember(),event.getName(),event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -346,11 +414,15 @@ public class EventHandler {
      */
     public void onGlobalUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GLOBAL_USER_CONTEXT, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGlobalUserContextEvent(event.getUser()
+            final ValidationEvent e = isValid(identifier, Type.GLOBAL_USER_CONTEXT, event.getUser(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGlobalUserContextEvent(event.getUser()
                         ,event.getTarget(),event.getName(),event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -362,11 +434,15 @@ public class EventHandler {
      */
     public void onGuildMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GUILD_MSG_CONTEXT, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGuildMessageContextEvent(event.getMember(), event.getChannel()
+            final ValidationEvent e = isValidGuild(identifier, Type.GUILD_MSG_CONTEXT, event.getMember(), event.getChannel().getId());
+
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGuildMessageContextEvent(event.getMember(), event.getChannel()
                         , event.getName(), event);
+                return;
             }
+
+            sendErrorCallback(e, event);
         });
     }
 
@@ -378,12 +454,25 @@ public class EventHandler {
      */
     public void onGlobalMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
-            Event e;
-            if ((e = isValid(identifier, Type.GUILD_MSG_CONTEXT, event.getUser(), event.getChannel().getId())) != null) {
-                e.getWorker().processGlobalMessageContextEvent(event.getUser(), event.getChannel()
+            final ValidationEvent e = isValid(identifier, Type.GLOBAL_MSG_CONTEXT, event.getUser(), event.getChannel().getId());
+            if (e.isSuccess()) {
+                e.getEvent().getWorker().processGlobalMessageContextEvent(event.getUser(), event.getChannel()
                         , event.getName(), event);
             }
         });
+    }
+
+    /**
+     * Sends an error callback to the user
+     * @param event the validation event
+     * @param callback the reply callback
+     */
+    private void sendErrorCallback(ValidationEvent event, IReplyCallback callback) {
+        if (!errorCallback) {
+            return;
+        }
+
+        callback.replyEmbeds(event.getValidation().getEmbed()).setEphemeral(true).queue();
     }
 
     /**
@@ -397,26 +486,63 @@ public class EventHandler {
      * @param type is the Type of the event
      * @param user is a independent discord user object
      * @param channelID is the ID of the channel which should be checked
-     * @return the {@link Event} if its a valid request
+     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
      */
-    private Event isValid(final String identifier, final Type type, final User user, final String channelID) {
+    private ValidationEvent isValid(final String identifier, final Type type, final User user, final String channelID) {
         if (this.ignoreBotRequest && user.isBot()) {
-            return null;
+            return ValidationEvent.fail(Validation.IS_BOT);
         }
 
         final Event e = this.events.get(type).get(identifier);
         if (e == null) {
-            return null;
+            return ValidationEvent.fail(Validation.NO_EVENT);
         }
 
         if (!e.isAllowedChannel(channelID)) {
-            return null;
+            return ValidationEvent.fail(Validation.WRONG_CHANNEL);
         }
 
-        if (onCooldown(identifier, user.getId(), e)) {
-            return null;
+        if (onCooldown(type + identifier, user.getId(), e)) {
+            return ValidationEvent.fail(Validation.ON_COOLDOWN);
         }
-        return e;
+        return ValidationEvent.success(e);
+    }
+
+    /**
+     * Checks if the call is valid or not.<br>
+     * <ul>
+     *     <li>Existing Event</li>
+     *     <li>Allowed Channel</li>
+     *     <li>Isnt on cooldown</li>
+     * </ul>
+     * @param identifier is the unique {@link String} for the event
+     * @param type is the Type of the event
+     * @param member is a guild discord user object
+     * @param channelID is the ID of the channel which should be checked
+     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
+     */
+    private ValidationEvent isValidGuild(final String identifier, final Type type, final Member member, final String channelID) {
+        if (this.ignoreBotRequest && member.getUser().isBot()) {
+            return ValidationEvent.fail(Validation.IS_BOT);
+        }
+
+        final Event e = this.events.get(type).get(identifier);
+        if (e == null) {
+            return ValidationEvent.fail(Validation.NO_EVENT);
+        }
+
+        if (adminBypass && member.hasPermission(Permission.ADMINISTRATOR)) {
+            return ValidationEvent.success(e);
+        }
+
+        if (!e.isAllowedChannel(channelID)) {
+            return ValidationEvent.fail(Validation.WRONG_CHANNEL);
+        }
+
+        if (onCooldown(type + identifier, member.getId(), e)) {
+            return ValidationEvent.fail(Validation.ON_COOLDOWN);
+        }
+        return ValidationEvent.success(e);
     }
 
     /**
