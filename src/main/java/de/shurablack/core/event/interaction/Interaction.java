@@ -49,9 +49,7 @@ public class Interaction {
     private final String identifier;
 
     /** List of channelIDs where the interaction is allowed to be used.
-     * If the list is empty, the interaction can be used in any channel.
-     * <br><br>
-     * Restricted channels should only be used in the context of regular messageReceive events.
+     * If the list is empty, the interaction can be used in any channel
      */
     private final List<String> channelRestriction = new ArrayList<>();
 
@@ -105,9 +103,6 @@ public class Interaction {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
         this.globalCooldown = globalCooldownSec;
-        if (this.globalCooldown > NO_COOLDOWN) {
-            this.globalCooldown *= 1_000;
-        }
         return this;
     }
 
@@ -125,9 +120,6 @@ public class Interaction {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
         this.userCooldown = userCooldownSec;
-        if (this.userCooldown > NO_COOLDOWN) {
-            this.userCooldown *= 1_000;
-        }
         return this;
     }
 

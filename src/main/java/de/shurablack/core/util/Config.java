@@ -69,9 +69,5 @@ public class Config {
             ServerUtil.GLOBAL_LOGGER.error("The <\u001b[32;1mconfig.properties\u001b[0m> misses an discord access_token and will be terminated");
             System.exit(1);
         }
-
-        if (!CONFIGS.containsKey("thread_scale")) {
-            CONFIGS.put("thread_scale", "2");
-        }
     }
 }

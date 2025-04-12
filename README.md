@@ -1,11 +1,12 @@
 # JDAdvanced
 JDAdvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
 [JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
-> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine.
+> ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine. I am a student pursuing a degree in applied computer science.
+> Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
 
 ## License
 This project is licensed under the **Apache 2.0** license.<br>
-**Copyright (c)** 2023-2025 ShuraBlack<br>
+**Copyright (c)** 2023 ShuraBlack<br>
 For more information about the license, see [apache.org](https://www.apache.org/licenses/LICENSE-2.0)
 or check the <b>LICENSE</b> file in the project
 
@@ -14,7 +15,7 @@ or check the <b>LICENSE</b> file in the project
 
 This project requires Java 8+ [SDK](https://www.oracle.com/java/technologies/downloads/)<br>
 All dependencies are managed by [Maven](https://maven.apache.org)
-- [JDA](https://github.com/discord-jda/JDA) - **5.3.2**
+- [JDA](https://github.com/discord-jda/JDA) - **5.0.0-beta.19**
 - [Discord-Webhooks](https://github.com/MinnDevelopment/discord-webhooks) - **0.8.2**
 - [Log4j Core](https://github.com/apache/logging-log4j2) - **2.20.0**
 - [Log4j API](https://github.com/apache/logging-log4j2) - **2.0.5**
@@ -23,8 +24,6 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
 - [Json](https://github.com/stleary/JSON-java) - **20231013**
-- [Classgraph](https://github.com/classgraph/classgraph) - **4.8.179**
-- [JUnit Engine](https://github.com/junit-team/junit5) - **5.13.0-M2** *(Test scope)*
 
 ## Packages
 - **core** -> Main classess of the project
@@ -32,7 +31,6 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - **localization** -> Managing the localization of your response texts
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
-- **localization** -> Translation and timezones
 
 ## Download
 Currently this project only supports [GitHub Realse](https://github.com/ShuraBlack/JDAdvanced/releases) with a **.jar**.
@@ -136,12 +134,9 @@ Alternatively you can use a JSON file to declare your InteractionSets
 ```
 and load it via
 ```java
-List<InteractionSet> InteractionSet.fromJson("path/to/file.json")
+List<InteractionSet> InteractionSet.fromJSON("path/to/file.json")
 ```
-or use the new annotation style on the EventWorker classes that will automatically detect the used classes and process functions
-```java
-List<InteractionSet> InteractionSet.fromAnnotation()
-```
+
 
 ## Write Listener
 Listeners should maintain a reference to the EventHandler in order to pass the JDA events. Default implementations can be found in the _de.shurablack.listener_ package.
@@ -173,7 +168,6 @@ Your Worker class should extend the EventWorker and implement all the active Int
 public Worker extends EventWorker {
 
   @Override
-  @EventProcess(identifier = "test", userCooldown = 10, globalCooldown = 20)
   public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event)
     // Your Implementation
 }
