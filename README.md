@@ -24,13 +24,15 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
 - [Json](https://github.com/stleary/JSON-java) - **20231013**
-- []
+- [Classgraph](https://github.com/classgraph/classgraph) - **4.8.179**
+- [JUnit](https://github.com/junit-team/junit5) - **5.13.0-M2** *(Test scope)*
 
 ## Packages
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
 - **sql** -> FluentSQL, SQLRequest & Connectionpool
+- **localization** -> Language and timezone handling
 
 ## Download
 Currently this project only supports [GitHub Realse](https://github.com/ShuraBlack/JDAdvanced/releases) with a **.jar**.
@@ -130,7 +132,12 @@ Alternatively you can use a JSON file to declare your InteractionSets
 ```
 and load it via
 ```java
-List<InteractionSet> InteractionSet.loadFromJSON("path/to/file.json")
+List<InteractionSet> list = InteractionSet.fromJson("path/to/file.json");
+```
+or use the new annotation style to annotate your EventWorker class.
+This will automatically register the EventWorker and all its interactions.
+```java
+List<InteractionSet> list = InteractionSet.fromAnnotation();
 ```
 
 
