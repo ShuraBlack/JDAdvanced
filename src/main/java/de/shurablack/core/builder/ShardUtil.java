@@ -8,8 +8,10 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.sharding.ShardManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,37 +19,38 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
  * <p>
  * This project is licensed under the Apache 2.0 license <br>
- * Copyright (c) 2023 ShuraBlack<br>
+ * Copyright (c) 2023-2025 ShuraBlack<br>
  * For more information about the license, see <a href="https://www.apache.org/licenses/LICENSE-2.0">apache.org</a>
  * or check the <b>LICENSE</b> file in the project.
  * </p>
  * <br>
  *
  * <p>
- * The JDAUtil class is a Java class that provides a way to interact with a Discord bot
+ * The ShardUtil class is a Java class that provides a way to interact with a Discord bot
  * , as well as using a command-line interface
  * <br>
- * It can only be created via the {@link UtilBuilder}.
+ * It can only be created via the {@link ShardUtilBuilder}.
  * <br>
  * </p>
  *
- * @see UtilBuilder UtilBuilder
- * @version core-1.0.0
- * @date 12.06.2023
+ * @see ShardUtilBuilder ShardUtilBuilder
+ * @version core-1.1.0
+ * @date 12.04.2025
  * @author ShuraBlack
  */
-public class JDAUtil {
+public class ShardUtil {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(JDAUtil.class);
+    private static final Logger LOGGER = LogManager.getLogger(ShardUtil.class);
 
-    /** Presents the discord bot */
-    private static JDA JDA;
+    /** ShardManager which presents the discord bot */
+    private static ShardManager SHARD_MANAGER;
 
     /** Class to handle events of the discord bot */
     private final EventHandler handler;
@@ -56,7 +59,7 @@ public class JDAUtil {
     private ConnectionPool connectionPool;
 
     /** Task which will be executed on exit */
-    private Consumer<String> onExit;
+    private AtomicReference<Consumer<Void>> onExit;
 
     /**
      * List of {@link CommandAction} which represeting the available commands
@@ -64,27 +67,24 @@ public class JDAUtil {
     private final List<CommandAction> commandActions = new ArrayList<>();
 
     /**
-     * This is the constructor for the JDAUtil class
-     * @param jda the specified discord bot
+     * This is the constructor for the ShardUtil class
+     * @param manager the specified discord bot
      * @param handler the specified hadler object
      */
-    JDAUtil(final JDA jda, final EventHandler handler) {
-        JDA = jda;
-        JDA.addEventListener(new ListenerAdapter() {
+    ShardUtil(final ShardManager manager, final EventHandler handler) {
+        SHARD_MANAGER = manager;
+        SHARD_MANAGER.addEventListener(new ListenerAdapter() {
+            private int shards = 1;
             @Override
-            public void onReady(ReadyEvent event) {
-                startCommandLine();
+            public void onReady(@NotNull ReadyEvent event) {
+                LOGGER.info("Shard [{}/{}] is ready", event.getJDA().getShardInfo().getShardId()+1, SHARD_MANAGER.getShardsTotal());
+                if (shards == SHARD_MANAGER.getShardsTotal()) {
+                    startCommandLine();
+                }
+                shards++;
             }
         });
         this.handler = handler;
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            LOGGER.info("Application gets terminated ...");
-            Dispatcher.shutdownService();
-            if (this.onExit != null) {
-                onExit.accept("");
-            }
-        }));
     }
 
     /**
@@ -107,8 +107,8 @@ public class JDAUtil {
      * Adds an shutdown task, which will be executed on calling the exit command in the terminal
      * @param task the specified task
      */
-    void addExitTask(final Consumer<String> task) {
-        this.onExit = task;
+    void addExitTask(final Consumer<Void> task) {
+        this.onExit = new AtomicReference<>(task);
     }
 
     /**
@@ -169,8 +169,9 @@ public class JDAUtil {
                 input -> {
                     LOGGER.info("Application gets terminated ...");
                     Dispatcher.shutdownService();
-                    if (this.onExit != null) {
-                        onExit.accept(input);
+                    final Consumer<Void> onExit = this.onExit.get();
+                    if (onExit != null) {
+                        onExit.accept(null);
                     }
                     System.exit(1);
                 }
@@ -207,8 +208,8 @@ public class JDAUtil {
     /**
      * @return the {@link JDA} object which needs be link with {@link UtilBuilder#create(JDABuilder, EventHandler)}
      */
-    public static JDA getJDA() {
-        return JDA;
+    public static ShardManager getShardManager() {
+        return SHARD_MANAGER;
     }
 
     /**
@@ -224,5 +225,4 @@ public class JDAUtil {
     public ConnectionPool getConnectionPool() {
         return connectionPool;
     }
-
 }

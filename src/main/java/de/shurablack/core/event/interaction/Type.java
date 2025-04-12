@@ -25,5 +25,25 @@ public enum Type {
     PRIVATE_REACTION,
     PUBLIC_REACTION,
     ENTITY_SELECTION,
-    STRING_SELECTION
+    STRING_SELECTION;
+
+    public static Type fromFunctionName(String functionName) {
+        switch (functionName) {
+            case "processButtonEvent": return BUTTON;
+            case "processGlobalSlashEvent": return GLOBAL_SLASH;
+            case "processGuildSlashEvent": return GUILD_SLASH;
+            case "processModalEvent": return MODAL;
+            case "processPrivateChannelEvent": return PRIVATE_CHANNEL;
+            case "processPrivateReactionEvent": return PRIVATE_REACTION;
+            case "processPublicChannelEvent": return PUBLIC_CHANNEL;
+            case "processPublicReactionEvent": return PUBLIC_REACTION;
+            case "processStringSelectEvent": return STRING_SELECTION;
+            case "processEntitySelectEvent": return ENTITY_SELECTION;
+            case "processGlobalUserContextEvent": return GLOBAL_USER_CONTEXT;
+            case "processGuildUserContextEvent": return GUILD_USER_CONTEXT;
+            case "processGlobalMsgContextEvent": return GLOBAL_MSG_CONTEXT;
+            case "processGuildMsgContextEvent": return GUILD_MSG_CONTEXT;
+        };
+        return null;
+    }
 }
