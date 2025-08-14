@@ -89,57 +89,8 @@ To declare functions of an EventWorker as active, you can utilize the Interactio
 final EventHandler handler = EventHandler.create()
   // Set Prefix for Messages and boolean for ingoreBotRequests
   .set(EventHandler.DEFAULT_PREFIX, true)
-  .registerEvent(
-    InteractionSet().create(
-      new EventWorkerA(),
-      Interaction.create(GLOBAL_SLASH, "identifier").setGlobalCD(30),
-      Interaction.create(GUILD_SLASH, "identifier")
-    ),
-    InteractionSet().create(
-      new EventWorkerB(),
-      Interaction.create(GLOBAL_SLASH, "identifier").setUserCD(10),
-      Interaction.create(GUILD_SLASH, "identifier").setChannelRestriction(List.of(...))
-    )
-  );
+  .registerEvent(InteractionSet.fromAnnotation());
 ```
-Alternatively you can use a JSON file to declare your InteractionSets
-```json
-{"interactionSets": [{
-  "worker": "de.shurablack.core.event.Test",
-  "interactions": [
-    {
-      "identifier": "identifier",
-      "globalCooldown": 1000,
-      "userCooldown": 1000,
-      "format": "BUTTON",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
-      ]
-    },
-    {
-      "identifier": "identifier",
-      "globalCooldown": -1,
-      "userCooldown": -1,
-      "format": "MODAL",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
-      ]
-    }
-  ]
-}]}
-```
-and load it via
-```java
-List<InteractionSet> list = InteractionSet.fromJson("path/to/file.json");
-```
-or use the new annotation style to annotate your EventWorker class.
-This will automatically register the EventWorker and all its interactions.
-```java
-List<InteractionSet> list = InteractionSet.fromAnnotation();
-```
-
 
 ## Write Listener
 Listeners should maintain a reference to the EventHandler in order to pass the JDA events. Default implementations can be found in the _de.shurablack.listener_ package.
@@ -167,11 +118,34 @@ Your Worker class should extend the EventWorker and implement all the active Int
 
 **Example:**
 
+Classes that inherint EventWorker get automatically picked up. Enable event processes by annotating overridden functions:
 ```java
-public Worker extends EventWorker {
-
+public class Foo extends EventWorker {
   @Override
-  public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event)
-    // Your Implementation
+  @EventProcess(identifier = "foo", userCooldown = 10, globalCooldown = 1)
+  public void processGuildSlashEvent(Member member, MessageChannelUnion channel, String name, SlashCommandInteractionEvent event) {
+    ...
+  }
+}
+```
+If you need multiple layers of Event Worker, you can use The RedirectedProcess annotation to do so
+```java
+public class Parent extends EventWorker {
+  // Implement functions that accept the events and redirect them to new functions
+  public void processGuildSlashEvent(Member member, MessageChannelUnion channel, String name, SlashCommandInteractionEvent event) {
+    redirect(event);
+  }
+
+  public void redirect(IReplyCallback callback) { }
+}
+
+@RedirectedProcess({
+  @ExtendedEventProcess(identifier = "foo", type = Type.GUILD_SLASH, userCooldown = 10)
+})
+public class Child extends Parent {
+  @Override
+  public void redirect(IReplyCallback callback) {
+    ...
+  }
 }
 ```
