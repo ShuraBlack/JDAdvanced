@@ -11,8 +11,8 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberRemoveEvent;
 import net.dv8tion.jda.api.events.guild.update.GuildUpdateBoostCountEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.OffsetDateTime;
@@ -36,7 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class DefaultServerNotifier extends ListenerAdapter {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(DefaultServerNotifier.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultServerNotifier.class);
 
     /** Discord Server webhook URL */
     private final String webHookLink;

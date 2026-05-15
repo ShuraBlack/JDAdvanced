@@ -1,7 +1,7 @@
 package de.shurablack.core.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -27,7 +27,7 @@ import static de.shurablack.core.util.FileUtil.loadProperties;
 public class AssetPool {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(AssetPool.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AssetPool.class);
 
     /** Map object for storing the data */
     private static final Map<String, String> ASSETS = new ConcurrentHashMap<>();

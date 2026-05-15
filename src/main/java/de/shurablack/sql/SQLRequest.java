@@ -3,8 +3,8 @@ package de.shurablack.sql;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -50,7 +50,7 @@ import java.util.List;
 public class SQLRequest {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(SQLRequest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SQLRequest.class);
 
     /** Database connection pool */
     private static ConnectionPool POOL;

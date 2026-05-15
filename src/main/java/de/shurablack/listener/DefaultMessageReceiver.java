@@ -1,6 +1,6 @@
 package de.shurablack.listener;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class DefaultMessageReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link EventHandler} */
+    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
     private final EventHandler handler;
 
     /** Automatic delete incoming {@link net.dv8tion.jda.api.entities.Guild Guild} messages */

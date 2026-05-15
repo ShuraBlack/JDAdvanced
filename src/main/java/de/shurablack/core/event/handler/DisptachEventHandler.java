@@ -1,5 +1,6 @@
-package de.shurablack.core.event;
+package de.shurablack.core.event.handler;
 
+import de.shurablack.core.event.Event;
 import de.shurablack.core.event.interaction.Interaction;
 import de.shurablack.core.event.interaction.InteractionSet;
 import de.shurablack.core.event.interaction.Type;
@@ -23,8 +24,8 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -49,16 +50,10 @@ import java.util.stream.Collectors;
  * @date 15.06.2023
  * @author ShuraBlack
  */
-public class EventHandler {
+public class DisptachEventHandler extends EventHandler {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(EventHandler.class);
-
-    /** The default prefix for commands */
-    public static final String DEFAULT_PREFIX = "!";
-
-    /** The prefix for commands */
-    private static String PREFIX = DEFAULT_PREFIX;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DisptachEventHandler.class);
 
     /** Indicating whether requests from other bots should be ignored */
     private boolean ignoreBotRequest = true;
@@ -86,8 +81,8 @@ public class EventHandler {
      * Creates a new EventHandler object
      * @return the handler for chaining
      */
-    public static EventHandler createDefault() {
-        final EventHandler handler = new EventHandler();
+    public static DisptachEventHandler createDefault() {
+        final DisptachEventHandler handler = new DisptachEventHandler();
         for (Type t : Type.values()) {
             handler.events.put(t, new ConcurrentHashMap<>());
         }
@@ -100,9 +95,9 @@ public class EventHandler {
      * @param ignoreBotRequest the ignore flag
      * @return the handler for chaining
      */
-    public static EventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
-        final EventHandler handler = createDefault();
-        PREFIX = prefix;
+    public static DisptachEventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
+        final DisptachEventHandler handler = createDefault();
+        EventHandler.setPREFIX(prefix);
         handler.ignoreBotRequest = ignoreBotRequest;
         handler.errorCallback = errorFeedback;
         handler.adminBypass = adminBypass;
@@ -114,7 +109,8 @@ public class EventHandler {
      * @param set of events which will be created
      * @return the handler for chaining
      */
-    public EventHandler registerEvent(final InteractionSet... set) {
+    @Override
+    public DisptachEventHandler registerEvent(final InteractionSet... set) {
         for (InteractionSet os : set) {
             registerEventSubRoutine(os);
         }
@@ -126,7 +122,8 @@ public class EventHandler {
      * @param set of events which will be created
      * @return the handler for chaining
      */
-    public EventHandler registerEvent(final List<InteractionSet> set) {
+    @Override
+    public DisptachEventHandler registerEvent(final List<InteractionSet> set) {
         for (InteractionSet os : set) {
             registerEventSubRoutine(os);
         }
@@ -145,16 +142,18 @@ public class EventHandler {
                     os.getWorker(),
                     o.getGlobalCooldown(),
                     o.getUserCooldown(),
-                    o.getChannelRestriction()
+                    o.getChannelRestriction(),
+                    o.isBypassGuildValidity()
             );
             this.events.get(o.getType()).put(o.getIdentifier(),event);
 
         }
-        LOGGER.info(String.format("Register - Type/s: %s, Identifier/s: %s"
+        LOGGER.info(String.format("Register worker: \u001B[33m%s\u001B[0m -> %s"
+                , os.getWorker().getClass().getName()
                 , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getType().name()
-                        + "\u001B[0m").collect(Collectors.joining(", "))
-                , os.getInteractions().stream().map(interaction -> "\u001B[33m" + interaction.getIdentifier()
-                        + "\u001B[0m").collect(Collectors.joining(", "))));
+                        + "\u001B[0m" + (interaction.isBypassGuildValidity() ? "(BP)" : ""))
+                        .collect(Collectors.joining(", "))
+        ));
     }
 
     /**
@@ -208,12 +207,13 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onButtonEvent(final String identifier, final ButtonInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.BUTTON, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
-                e.getEvent().getWorker().processButtonEvent(event.getMember(),event.getChannel(), event.getButton().getId(), event);
+                e.getEvent().getWorker().processButtonEvent(event.getMember(),event.getChannel(), event.getButton().getCustomId(), event);
                 return;
             }
 
@@ -227,6 +227,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGlobalSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_SLASH, event.getUser(), event.getChannel().getId());
@@ -246,6 +247,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGuildSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_SLASH, event.getMember(), event.getChannel().getId());
@@ -265,6 +267,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onModalEvent(final String identifier, final ModalInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.MODAL, event.getMember(), event.getChannel().getId());
@@ -284,6 +287,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onPrivateChannelEvent(final String identifier, final MessageReceivedEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.PRIVATE_CHANNEL, event.getAuthor(), event.getChannel().getId());
@@ -301,6 +305,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onPublicChannelEvent(final String identifier, final MessageReceivedEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_CHANNEL, event.getMember(), event.getChannel().getId());
@@ -318,6 +323,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onPrivateReactionEvent(final String identifier, final MessageReactionAddEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.PRIVATE_REACTION, event.getUser(), event.getChannel().getId());
@@ -335,6 +341,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onPublicReactionEvent(final String identifier, final MessageReactionAddEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_REACTION, event.getMember(), event.getChannel().getId());
@@ -352,6 +359,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onStringSelectionMenuEvent(final String identifier, final StringSelectInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
@@ -372,6 +380,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onEntitySelectionMenuEvent(final String identifier, EntitySelectInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
@@ -392,6 +401,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGuildUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_USER_CONTEXT, event.getMember(), event.getChannel().getId());
@@ -412,6 +422,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGlobalUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_USER_CONTEXT, event.getUser(), event.getChannel().getId());
@@ -432,6 +443,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGuildMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_MSG_CONTEXT, event.getMember(), event.getChannel().getId());
@@ -452,6 +464,7 @@ public class EventHandler {
      * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      *              of the {@link net.dv8tion.jda.api.JDA JDA}
      */
+    @Override
     public void onGlobalMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
         Dispatcher.dispatch(() -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_MSG_CONTEXT, event.getUser(), event.getChannel().getId());
@@ -460,6 +473,19 @@ public class EventHandler {
                         , event.getName(), event);
             }
         });
+    }
+
+    /**
+     * Gets the event worker for the given identifier, type, user and channel ID
+     * @param identifier is the unique {@link String} for the event
+     * @param type is the Type of the event
+     * @param user is a independent discord user object
+     * @param channelId is the ID of the channel which should be checked
+     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
+     */
+    @Override
+    public ValidationEvent getEventWorker(final String identifier, final Type type, final User user, final String channelId) {
+        return isValid(identifier, type, user, channelId);
     }
 
     /**
@@ -543,35 +569,5 @@ public class EventHandler {
             return ValidationEvent.fail(Validation.ON_COOLDOWN);
         }
         return ValidationEvent.success(e);
-    }
-
-    /**
-     * @return the map of last global calls
-     */
-    public Map<String, Long> getLastCallGlobal() {
-        return lastCallGlobal;
-    }
-
-    /**
-     * @return the map of last user calls
-     */
-    public Map<String, Map<String, Long>> getLastCallUser() {
-        return lastCallUser;
-    }
-
-    /**
-     * @return the set Prefix
-     */
-    public static String getPREFIX() {
-        return PREFIX;
-    }
-
-    /**
-     * Clears the cooldown of the last call maps
-     */
-    public void clearCooldowns() {
-        lastCallGlobal.clear();
-        lastCallUser.clear();
-        LOGGER.info("Cleaned up cooldown´s");
     }
 }

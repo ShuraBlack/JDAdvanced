@@ -6,8 +6,8 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class LocalData {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(LocalData.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LocalData.class);
 
     /** Temp Properties **/
     private static final Properties TEMPS = new Properties();

@@ -1,7 +1,7 @@
 package de.shurablack.core.event.interaction;
 
-import de.shurablack.core.event.EventHandler;
 import de.shurablack.core.event.EventWorker;
+import de.shurablack.core.event.handler.EventHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +48,9 @@ public class Interaction {
     /** Identify the interaction and is prefixed with the type of the interaction */
     private final String identifier;
 
+    /** If true, the interaction will bypass guild validity checks (only for GUILD slash commands) */
+    private boolean bypassGuildValidity = false;
+
     /** List of channelIDs where the interaction is allowed to be used.
      * If the list is empty, the interaction can be used in any channel.
      * <br><br>
@@ -76,7 +79,18 @@ public class Interaction {
      * @return an Interaction for chaining
      */
     public static Interaction create(final Type type, final String identifier) {
-        return new Interaction(type, identifier);
+        return new Interaction(type, identifier, false);
+    }
+
+    /**
+     * This is a static factory method that creates a new Interaction object with the specified type and identifier
+     * @param type the specified type of the event
+     * @param identifier the specified unique string
+     * @param bypassGuildValidity if true, the interaction will bypass guild validity checks (only for GUILD slash commands)
+     * @return an Interaction for chaining
+     */
+    public static Interaction create(final Type type, final String identifier, final boolean bypassGuildValidity) {
+        return new Interaction(type, identifier, bypassGuildValidity);
     }
 
     /**
@@ -84,9 +98,10 @@ public class Interaction {
      * @param type  the specified type of the event
      * @param identifier the specified unique string
      */
-    Interaction(final Type type, final String identifier) {
+    Interaction(final Type type, final String identifier, final boolean bypassGuildValidity) {
         this.type = type;
         this.identifier = addPrefix(identifier);
+        this.bypassGuildValidity = bypassGuildValidity;
         this.globalCooldown = -1L;
         this.userCooldown = -1L;
     }
@@ -144,7 +159,7 @@ public class Interaction {
     }
 
     /**
-     * Add the {@link EventHandler#getPREFIX()} to any standard message identifier
+     * Add the {@link de.shurablack.core.event.handler.EventHandler#getPREFIX()} to any standard message identifier
      * @param identifier the specified unique string
      * @return the unique string, starting with the prefix
      */
@@ -153,6 +168,13 @@ public class Interaction {
             return EventHandler.getPREFIX() + identifier;
         }
         return identifier;
+    }
+
+    /**
+     * @return true, if the interaction bypasses guild validity checks (only for GUILD slash commands)
+     */
+    public boolean isBypassGuildValidity() {
+        return bypassGuildValidity;
     }
 
     /**

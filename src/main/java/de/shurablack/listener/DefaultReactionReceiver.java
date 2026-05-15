@@ -1,6 +1,7 @@
 package de.shurablack.listener;
 
-import de.shurablack.core.event.EventHandler;
+
+import de.shurablack.core.event.handler.EventHandler;
 import de.shurablack.mapping.MultiKeyMap;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -24,7 +25,7 @@ import java.util.Optional;
  */
 public class DefaultReactionReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link EventHandler} */
+    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
     private final EventHandler handler;
 
     /** MultiKeyMap for grouping */

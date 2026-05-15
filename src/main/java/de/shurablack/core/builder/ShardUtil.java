@@ -1,6 +1,8 @@
 package de.shurablack.core.builder;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
+import de.shurablack.core.util.Config;
+import de.shurablack.monitoring.VM;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.LocalData;
 import de.shurablack.sql.ConnectionPool;
@@ -8,9 +10,10 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.sharding.ShardManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
@@ -19,6 +22,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -47,7 +51,7 @@ import java.util.function.Consumer;
 public class ShardUtil {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(ShardUtil.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShardUtil.class);
 
     /** ShardManager which presents the discord bot */
     private static ShardManager SHARD_MANAGER;
@@ -164,6 +168,55 @@ public class ShardUtil {
                 }
         ));
         addAction(new CommandAction(
+                "upload",
+                "Uploads all interaction commands",
+                input -> {
+                    LOGGER.info("Uploading commands ...");
+                    JDA jda = JDABuilder.createLight(Config.getConfig("access_token"))
+                            .enableIntents(GatewayIntent.GUILD_MESSAGES)
+                            .disableIntents(
+                                    GatewayIntent.MESSAGE_CONTENT,
+                                    GatewayIntent.GUILD_MEMBERS,
+                                    GatewayIntent.GUILD_WEBHOOKS,
+                                    GatewayIntent.GUILD_INVITES,
+                                    GatewayIntent.GUILD_VOICE_STATES,
+                                    GatewayIntent.GUILD_PRESENCES,
+                                    GatewayIntent.GUILD_MESSAGE_TYPING,
+                                    GatewayIntent.DIRECT_MESSAGES,
+                                    GatewayIntent.DIRECT_MESSAGE_REACTIONS,
+                                    GatewayIntent.DIRECT_MESSAGE_TYPING
+                            )
+                            .build();
+
+                    CommandUploadBuilder.uploadInteractionCommands(jda);
+                    jda.shutdown();
+                    LOGGER.info("Commands uploaded");
+                }
+        ));
+        addAction(new CommandAction(
+                "performance",
+                "Shows performance debug (<mem/load>)",
+                input -> {
+                    final String[] args = input.split(" ");
+                    if (args.length < 2) {
+                        LOGGER.error("Invalid input: performance <mem/load>");
+                        return;
+                    }
+                    if (args[1].equals("mem")) {
+                        LOGGER.info("\n" + VM.getMemoryUsage());
+                    } else if (args[1].equals("load")) {
+                        LOGGER.info("\n" + VM.getProcessLoad());
+                    } else {
+                        LOGGER.error("Invalid input: performance <mem/load>");
+                    }
+                }
+        ));
+        addAction(new CommandAction(
+                "dispatcher",
+                "Shows dispatcher debug",
+                input -> Dispatcher.logStatus()
+        ));
+        addAction(new CommandAction(
                 "exit",
                 "Closes the Application",
                 input -> {
@@ -175,11 +228,6 @@ public class ShardUtil {
                     }
                     System.exit(1);
                 }
-        ));
-        addAction(new CommandAction(
-                "dispatcher",
-                "Shows dispatcher debug",
-                input -> Dispatcher.logStatus()
         ));
         new Thread(() -> {
             String line;

@@ -10,7 +10,7 @@ import java.util.List;
  * The Event class is a Java class that represents a user-defined event, with a worker
  * that does something when the event is triggered, and optional cooldown and channel restrictions.
  * <br><br>
- * This class will be create when you call the {@link EventHandler#registerEvent(InteractionSet...)} with valid
+ * This class will be create when you call the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(InteractionSet...)} with valid
  * {@link InteractionSet}
  * </p>
  *
@@ -34,6 +34,9 @@ public class Event {
     /** List of channelIDs which restrict where the event cann be triggered */
     private final List<String> channelRestriction;
 
+    /** If true, the event will bypass guild validity checks (only for GUILD events) */
+    private final boolean bypassGuildValidity;
+
     /**
      * This is the constructor for the Event class
      * @param worker the instance of an {@link EventWorker}
@@ -42,11 +45,12 @@ public class Event {
      * @param channelRestriction the channel restriction of the event
      */
     public Event(final EventWorker worker, final long globalCooldown
-            , final long userCooldown, final List<String> channelRestriction) {
+            , final long userCooldown, final List<String> channelRestriction, final boolean bypassGuildValidity) {
         this.worker = worker;
         this.globalCooldown = globalCooldown;
         this.userCooldown = userCooldown;
         this.channelRestriction = channelRestriction;
+        this.bypassGuildValidity = bypassGuildValidity;
     }
 
     /**
@@ -68,6 +72,13 @@ public class Event {
      */
     public long getUserCooldown() {
         return userCooldown;
+    }
+
+    /**
+     * @return true if the event should bypass guild validity checks, false otherwise
+     */
+    public boolean isBypassGuildValidity() {
+        return bypassGuildValidity;
     }
 
     /**
