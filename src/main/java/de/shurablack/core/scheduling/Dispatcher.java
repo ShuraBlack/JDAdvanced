@@ -1,11 +1,19 @@
 package de.shurablack.core.scheduling;
 
+import de.shurablack.core.scheduling.annotation.Schedule;
+import de.shurablack.core.scheduling.annotation.ScheduleClass;
 import de.shurablack.core.util.Config;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfo;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import it.sauronsoftware.cron4j.InvalidPatternException;
 import it.sauronsoftware.cron4j.Scheduler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.*;
 
@@ -24,7 +32,7 @@ import java.util.concurrent.*;
  */
 public class Dispatcher {
 
-    private static final Logger LOGGER = LogManager.getLogger(Dispatcher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Dispatcher.class);
 
     /** The scheduler for time-based tasks*/
     private static final Scheduler SCHEDULER = new Scheduler();
@@ -41,6 +49,7 @@ public class Dispatcher {
      * Method to start the service executor.
      * <br>
      * The service executor is a cached thread pool executor with a core pool size of the available processors
+     * and a maximum pool size of the available processors multiplied by the thread scale from the config.
      */
     public static void start() {
         if (SERVICE != null) {
@@ -48,11 +57,14 @@ public class Dispatcher {
         }
 
         SERVICE = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-        SERVICE.setCorePoolSize(Runtime.getRuntime().availableProcessors());
-        SERVICE.setMaximumPoolSize(Runtime.getRuntime().availableProcessors() * Integer.parseInt(Config.getConfig("thread_scale")));
+        SERVICE.setCorePoolSize(Config.getConfigAsInt("dispatcher_thread_core", Runtime.getRuntime().availableProcessors()));
+        SERVICE.setMaximumPoolSize(Config.getConfigAsInt("dispatcher_thread_max", Runtime.getRuntime().availableProcessors() * 2));
         SERVICE.allowCoreThreadTimeOut(false);
         SERVICE.setKeepAliveTime(10, TimeUnit.MINUTES);
         SERVICE.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+
+        final String msg = String.format("Started Service Executor with <\u001b[32;1m%d\u001b[0m> Threads", SERVICE.getMaximumPoolSize());
+        LOGGER.info(msg);
     }
 
     /**
@@ -78,7 +90,7 @@ public class Dispatcher {
 
     /**
      * Method to schedule a cron task
-     * @param timePattern defines the frequence of the task
+     * @param timePattern defines the frequency of the task
      * @param name defines a unique string
      * @param task defines the runnable task
      */
@@ -92,6 +104,43 @@ public class Dispatcher {
             TASKS.add(new Entry(name, SCHEDULER.schedule(timePattern, task), task));
         } catch (InvalidPatternException e) {
             LOGGER.error(String.format("Invalid pattern in Task scheduling <\u001b[31m%s\u001b[0m>", timePattern),e);
+        }
+    }
+
+    public static void discoverCronTasks() {
+        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+            ClassInfoList classes = result.getClassesWithAnnotation(ScheduleClass.class);
+
+            for (ClassInfo info : classes) {
+                Class<?> workerClass = info.loadClass();
+
+                for (Method method : workerClass.getDeclaredMethods()) {
+                    if (!method.isAnnotationPresent(Schedule.class)) {
+                        continue;
+                    }
+
+                    Schedule schedule = method.getAnnotation(Schedule.class);
+                    if (schedule == null) {
+                        continue;
+                    }
+                    // method must be static and without parameter
+                    if (!Arrays.stream(method.getParameterTypes()).allMatch(p -> p.equals(Void.TYPE))) {
+                        LOGGER.error("Method <\u001b[31m%s\u001b[0m> in class <\u001b[31m%s\u001b[0m> must be static and without parameter", method.getName(), workerClass.getName());
+                        continue;
+                    }
+                    String timePattern = schedule.pattern();
+                    String name = schedule.name();
+                    Runnable task = () -> {
+                        try {
+                            method.invoke(null);
+                        } catch (Exception e) {
+                            LOGGER.error("Failed to execute scheduled task <\u001b[31m%s\u001b[0m> in class <\u001b[31m%s\u001b[0m>", name, workerClass.getName(), e);
+                        }
+                    };
+
+                    scheduleCronTask(timePattern, name, task);
+                }
+            }
         }
     }
 

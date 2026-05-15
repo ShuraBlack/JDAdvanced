@@ -15,26 +15,30 @@ import java.util.List;
  * @date 12.06.2023
  * @author ShuraBlack
  */
-public class CommandMapper {
+public class CommandId {
 
     /** Primary Commands String */
     private String primary;
 
     /** List of sub commands */
-    private final List<String> sub = new ArrayList<>();
+    private final String[] sub;
 
     /**
      * The CommandMapper standard constructor
      * @param input the user input/message
      */
-    public CommandMapper(final String input) {
+    public CommandId(final String input) {
         if (input.isEmpty()) {
-            return;
+            throw new IllegalArgumentException("Input string is empty");
         }
         String[] args = input.split(" ");
         this.primary = args[0];
 
-        sub.addAll(Arrays.asList(args).subList(1, args.length));
+        if (args.length > 1) {
+            this.sub = new String[0];
+        } else {
+            this.sub = Arrays.copyOfRange(args, 1, args.length);
+        }
     }
 
     /**
@@ -50,7 +54,7 @@ public class CommandMapper {
      * @return true if there are sub commands
      */
     public boolean isSubPresent() {
-        return !this.sub.isEmpty();
+        return this.sub.length > 0;
     }
 
     /**
@@ -65,23 +69,23 @@ public class CommandMapper {
      * @return the sub command or null
      */
     public String getSub(final int index) {
-        if (index >= this.sub.size()) {
+        if (index >= this.sub.length) {
             return null;
         }
-        return this.sub.get(index);
+        return this.sub[index];
     }
 
     /**
      * @return the total length of the command
      */
     public int totalSize() {
-        return sub.size()+1;
+        return 1 + this.sub.length;
     }
 
     /**
      * @return the length of the sub commands
      */
     public int subSize() {
-        return sub.size();
+        return this.sub.length;
     }
 }

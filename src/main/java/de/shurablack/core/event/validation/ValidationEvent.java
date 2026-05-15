@@ -4,7 +4,7 @@ import de.shurablack.core.event.Event;
 
 /**
  * Represents a validation event that associates an {@link Event} with a {@link Validation} state.
- * This class is used to encapsulate the result of a validation process in the {@link de.shurablack.core.event.EventHandler}
+ * This class is used to encapsulate the result of a validation process in the {@link de.shurablack.core.event.handler.EventHandler}
  *
  * @version core-1.1.0
  * @date 12.04.2025

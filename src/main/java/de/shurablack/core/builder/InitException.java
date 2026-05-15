@@ -1,6 +1,5 @@
 package de.shurablack.core.builder;
 
-import de.shurablack.core.event.EventHandler;
 import net.dv8tion.jda.api.JDABuilder;
 
 /**
@@ -9,7 +8,7 @@ import net.dv8tion.jda.api.JDABuilder;
  * error with initialization. It is a subclass of RuntimeException, which
  * means that it is an unchecked exception that is not required to be declared or caught in a try-catch block.
  * <br><br>
- * This will prevent the user to create an {@link JDAUtil} object via the {@link UtilBuilder#create(JDABuilder, EventHandler)},
+ * This will prevent the user to create an {@link JDAUtil} object via the {@link UtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)},
  * without calling the {@link UtilBuilder#init()} function.
  * </p>
  *

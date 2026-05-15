@@ -1,6 +1,7 @@
 package de.shurablack.core.builder;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
+import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
@@ -8,8 +9,8 @@ import de.shurablack.core.util.ConfigException;
 import de.shurablack.core.util.LocalData;
 import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.JDABuilder;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
@@ -50,7 +51,7 @@ import java.util.function.Consumer;
 public class UtilBuilder {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(UtilBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UtilBuilder.class);
 
     /** Flag that indicates whether the {@link Config} has been initialized */
     private static boolean INIT = false;
@@ -63,10 +64,12 @@ public class UtilBuilder {
      * from the "config.properties" file and initializing the {@link AssetPool} and {@link de.shurablack.core.util.LocalData} classes
      */
     public static void init() {
+        LOGGER.info("UtilBuilder initialization started");
         Config.loadConfig();
         Dispatcher.start();
         AssetPool.init();
         LocalData.init();
+        LOGGER.info("UtilBuilder initialization completed");
         INIT = true;
     }
 
@@ -85,7 +88,7 @@ public class UtilBuilder {
      */
     public static UtilBuilder createDefault() {
         final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
-        final EventHandler handler = EventHandler.createDefault();
+        final EventHandler handler = NativeEventHandler.createDefault();
         return create(builder, handler);
     }
 

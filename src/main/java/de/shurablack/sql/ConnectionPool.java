@@ -1,7 +1,7 @@
 package de.shurablack.sql;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -27,7 +27,7 @@ import java.util.*;
 public class ConnectionPool {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(ConnectionPool.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPool.class);
 
     /** URL of the database to connect to */
     private final String databaseUrl;

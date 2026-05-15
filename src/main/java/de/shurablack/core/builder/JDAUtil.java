@@ -1,6 +1,7 @@
 package de.shurablack.core.builder;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
+import de.shurablack.monitoring.VM;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.LocalData;
 import de.shurablack.sql.ConnectionPool;
@@ -8,8 +9,8 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -44,7 +45,7 @@ import java.util.function.Consumer;
 public class JDAUtil {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(JDAUtil.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JDAUtil.class);
 
     /** Presents the discord bot */
     private static JDA JDA;
@@ -57,6 +58,8 @@ public class JDAUtil {
 
     /** Task which will be executed on exit */
     private Consumer<String> onExit;
+
+    private volatile boolean gracefullyShutdown = false;
 
     /**
      * List of {@link CommandAction} which represeting the available commands
@@ -79,6 +82,9 @@ public class JDAUtil {
         this.handler = handler;
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (gracefullyShutdown) {
+                return;
+            }
             LOGGER.info("Application gets terminated ...");
             Dispatcher.shutdownService();
             if (this.onExit != null) {
@@ -164,9 +170,42 @@ public class JDAUtil {
                 }
         ));
         addAction(new CommandAction(
+                "upload",
+                "Uploads all interaction commands",
+                input -> {
+                    LOGGER.info("Uploading commands ...");
+                    CommandUploadBuilder.uploadInteractionCommands(JDA);
+                    LOGGER.info("Commands uploaded");
+                }
+        ));
+        addAction(new CommandAction(
+                "performance",
+                "Shows performance debug (<mem/load>)",
+                input -> {
+                    final String[] args = input.split(" ");
+                    if (args.length < 2) {
+                        LOGGER.error("Invalid input: performance <mem/load>");
+                        return;
+                    }
+                    if (args[1].equals("mem")) {
+                        LOGGER.info("\n" + VM.getMemoryUsage());
+                    } else if (args[1].equals("load")) {
+                        LOGGER.info("\n" + VM.getProcessLoad());
+                    } else {
+                        LOGGER.error("Invalid input: performance <mem/load>");
+                    }
+                }
+        ));
+        addAction(new CommandAction(
+                "dispatcher",
+                "Shows dispatcher debug",
+                input -> Dispatcher.logStatus()
+        ));
+        addAction(new CommandAction(
                 "exit",
                 "Closes the Application",
                 input -> {
+                    gracefullyShutdown = true;
                     LOGGER.info("Application gets terminated ...");
                     Dispatcher.shutdownService();
                     if (this.onExit != null) {
@@ -174,11 +213,6 @@ public class JDAUtil {
                     }
                     System.exit(1);
                 }
-        ));
-        addAction(new CommandAction(
-                "dispatcher",
-                "Shows dispatcher debug",
-                input -> Dispatcher.logStatus()
         ));
         new Thread(() -> {
             String line;
@@ -224,5 +258,4 @@ public class JDAUtil {
     public ConnectionPool getConnectionPool() {
         return connectionPool;
     }
-
 }

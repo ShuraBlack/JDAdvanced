@@ -1,6 +1,6 @@
 package de.shurablack.listener;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
@@ -23,12 +23,12 @@ import org.jetbrains.annotations.NotNull;
  */
 public class DefaultInteractionReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link EventHandler} */
+    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
     private final EventHandler handler;
 
     /**
      * The constructor for the class
-     * @param handler the specified {@link EventHandler}
+     * @param handler the specified {@link de.shurablack.core.event.handler.EventHandler}
      */
     public DefaultInteractionReceiver(EventHandler handler) {
         this.handler = handler;

@@ -1,6 +1,7 @@
 package de.shurablack.core.builder;
 
-import de.shurablack.core.event.EventHandler;
+import de.shurablack.core.event.handler.EventHandler;
+import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
@@ -8,8 +9,8 @@ import de.shurablack.core.util.ConfigException;
 import de.shurablack.core.util.LocalData;
 import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
@@ -49,7 +50,7 @@ import java.util.function.Consumer;
 public class ShardUtilBuilder {
 
     /** Class Logger */
-    private static final Logger LOGGER = LogManager.getLogger(UtilBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShardUtilBuilder.class);
 
     /** Flag that indicates whether the {@link Config} has been initialized */
     private static boolean INIT = false;
@@ -84,14 +85,14 @@ public class ShardUtilBuilder {
      */
     public static ShardUtilBuilder createDefault() {
         final DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(Config.getConfig("access_token"));
-        final EventHandler handler = EventHandler.createDefault();
+        final NativeEventHandler handler = NativeEventHandler.createDefault();
         return create(builder, handler);
     }
 
     /**
      *  This is a static factory method that creates a new ShardUtil object for building a {@link JDAUtil}
      * @param builder the builder for the {@link DefaultShardManagerBuilder}
-     * @param handler the specified {@link EventHandler}
+     * @param handler the specified {@link de.shurablack.core.event.handler.EventHandler}
      * @return the builder for chaining
      */
     public static ShardUtilBuilder create(final DefaultShardManagerBuilder builder, final EventHandler handler) {
@@ -113,7 +114,7 @@ public class ShardUtilBuilder {
     }
 
     /**
-     * @deprecated
+     * @Deprecated
      * This method is deprecated and will be removed in future versions.<br>
      * The management of database connections should happen separately from the class.
      * <br><br>

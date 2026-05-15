@@ -11,8 +11,8 @@ import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -29,7 +29,7 @@ import java.util.List;
  */
 public class ServerUtil {
 
-    public static final Logger GLOBAL_LOGGER = LogManager.getLogger("Global_Logger");
+    public static final Logger GLOBAL_LOGGER = LoggerFactory.getLogger("Global_Logger");
 
     /**
      * Color code for default use (grey)

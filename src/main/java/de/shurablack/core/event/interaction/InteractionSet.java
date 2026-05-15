@@ -1,18 +1,15 @@
 package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
-import de.shurablack.core.event.annotation.DisabledWorker;
-import de.shurablack.core.event.annotation.EventProcess;
-import de.shurablack.core.event.annotation.ExtendedEventProcess;
-import de.shurablack.core.event.annotation.RedirectedProcess;
+import de.shurablack.core.event.annotation.*;
 import de.shurablack.core.util.FileUtil;
 import de.shurablack.core.util.LocalData;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -22,6 +19,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * <p>
@@ -140,8 +138,8 @@ public class InteractionSet {
      * @see DisabledWorker
      * @return the list of InteractionSets
      */
-    public static List<InteractionSet> fromAnnotation() {
-        final Logger logger = LogManager.getLogger(InteractionSet.class);
+    private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> workerFactory) {
+        final Logger logger = LoggerFactory.getLogger(InteractionSet.class);
         final List<InteractionSet> interactionSets = new ArrayList<>();
 
         try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
@@ -156,7 +154,7 @@ public class InteractionSet {
                     logger.debug("Worker {} is disabled", workerClass.getName());
                     continue;
                 }
-                EventWorker worker = (EventWorker) workerClass.getDeclaredConstructor().newInstance();
+                EventWorker worker = (EventWorker) workerFactory.apply(workerClass);
 
                 List<Interaction> interactionsList = new ArrayList<>();
 
@@ -174,7 +172,8 @@ public class InteractionSet {
                     if (interactionsList.isEmpty()) {
                         continue;
                     }
-                    InteractionSet interactionSetObject = InteractionSet.create(
+                    InteractionSet interactionSetObject =
+                            InteractionSet.create(
                             worker,
                             interactionsList.toArray(new Interaction[0])
                     );
@@ -194,10 +193,15 @@ public class InteractionSet {
 
                     EventProcess eventProcess = method.getAnnotation(EventProcess.class);
 
-                    Interaction interactionObject = Interaction.create(type, eventProcess.identifier())
+                    if (method.isAnnotationPresent(BypassGuildValidity.class)) {
+                        logger.warn("Method {} in {} is annotated with @BypassGuildValidity!", method.getName(), workerClass.getName());
+                    }
+
+                    Interaction interactionObject = Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
                             .setGlobalCD(eventProcess.globalCooldown())
                             .setUserCD(eventProcess.userCooldown())
-                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()));
+                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel())
+                            );
                     interactionsList.add(interactionObject);
                 }
 
@@ -212,11 +216,48 @@ public class InteractionSet {
                 interactionSets.add(interactionSetObject);
             }
             logger.info("Found {} EventWorker classes", classes.size());
-        } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | InstantiationException e) {
-            logger.error("Error while creating EventWorker classes", e);
         }
 
         return interactionSets;
+    }
+
+    /**
+     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * <br><br>
+     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
+     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     *
+     * @see EventProcess
+     * @see RedirectedProcess
+     * @see ExtendedEventProcess
+     * @see DisabledWorker
+     * @return the list of InteractionSets
+     */
+    public static List<InteractionSet> fromAnnotation() {
+        return internalFromAnnotation(cls -> {
+            try {
+                return cls.getDeclaredConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * <br><br>
+     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
+     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     *
+     * @see EventProcess
+     * @see RedirectedProcess
+     * @see ExtendedEventProcess
+     * @see DisabledWorker
+     * @param workerFactory a function that takes a Class object and returns an instance of that class. This is used to create the EventWorker instances instead of using the default constructor.
+     * @return the list of InteractionSets
+     */
+    public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> workerFactory) {
+        return internalFromAnnotation(workerFactory);
     }
 
 }

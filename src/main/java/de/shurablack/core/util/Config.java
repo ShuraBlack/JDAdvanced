@@ -4,6 +4,7 @@ import de.shurablack.core.builder.UtilBuilder;
 
 import java.io.File;
 import java.util.Properties;
+import java.util.function.Function;
 
 /**
  * <p>
@@ -52,6 +53,40 @@ public class Config {
     }
 
     /**
+     * This method takes a string representing the name of a configuration property,
+     * and it returns the value of that property.
+     * <br><br>
+     * If the property does not exist, this method will return the default value.
+     * @param name the specified property which will be checked
+     * @param defaultValue the default value which will be returned if the property does not exist
+     * @return the corresponding property or null
+     */
+    public static long getConfigAsLong(final String name, final long defaultValue) {
+        final String value = CONFIGS.getProperty(name);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Long.parseLong(value);
+    }
+
+    /**
+     * This method takes a string representing the name of a configuration property,
+     * and it returns the value of that property.
+     * <br><br>
+     * If the property does not exist, this method will return the default value.
+     * @param name the specified property which will be checked
+     * @param defaultValue the default value which will be returned if the property does not exist
+     * @return the corresponding property or null
+     */
+    public static int getConfigAsInt(final String name, final int defaultValue) {
+        final String value = CONFIGS.getProperty(name);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Integer.parseInt(value);
+    }
+
+    /**
      * Loads the configuration properties from a file named "config.properties" in the current directory.
      * <br><br>
      * If this file does not exist, the method will log an error message and terminate the program
@@ -68,10 +103,6 @@ public class Config {
         if (!CONFIGS.containsKey("access_token")) {
             ServerUtil.GLOBAL_LOGGER.error("The <\u001b[32;1mconfig.properties\u001b[0m> misses an discord access_token and will be terminated");
             System.exit(1);
-        }
-
-        if (!CONFIGS.containsKey("thread_scale")) {
-            CONFIGS.put("thread_scale", "2");
         }
     }
 }

@@ -1,10 +1,8 @@
 package de.shurablack.core.event.interaction;
 
-import de.shurablack.core.event.EventHandler;
-
 /**
  * <p>
- * Defines available types of events, which can be handled by the {@link EventHandler}
+ * Defines available types of events, which can be handled by the {@link de.shurablack.core.event.handler.EventHandler}
  * </p>
  *
  * @version core-1.0.0

@@ -1,5 +1,6 @@
 package de.shurablack.core.event;
 
+
 import de.shurablack.core.event.interaction.InteractionSet;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -20,12 +21,12 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 /**
  * <p>
  * {@link EventWorker} cant be instantiated directly and should be extended
- * by an event proccessing class.
+ * by an event processing class.
  * <br><br>
- * Override the desired event process function and register your worker with the {@link EventHandler#registerEvent(InteractionSet...)}.
+ * Override the desired event process function and register your worker with the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(InteractionSet...)}.
  * <br><br>
- * The class will throw a {@link ImplementationException} if the method gets called, but isnt implemented probably
- * or stil calls the <b>super()</b> function.
+ * The class will throw a {@link ImplementationException} if the method gets called, but isn't implemented probably
+ * or still calls the <b>super()</b> function.
  * </p>
  * <pre>{@code
  * public Worker extends EventWorker {
@@ -42,16 +43,16 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
  */
 public abstract class EventWorker {
     
-    private static final String MSG = "Function isnt implemented or stil use super function call";
+    private static final String MSG = "Function isn't implemented or still use super function call";
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ButtonInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ButtonInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link ButtonInteractionEvent Event} got called
+     * @param channel is where the {@link ButtonInteractionEvent Event} got called
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.buttons.Button Button} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -61,7 +62,7 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
@@ -76,12 +77,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link SlashCommandInteractionEvent Event} got called
+     * @param channel is where the {@link SlashCommandInteractionEvent Event} got called
      * @param name is the command name of {@link SlashCommandInteractionEvent#getName()}
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -91,12 +92,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ModalInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ModalInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link SlashCommandInteractionEvent Event} got called
+     * @param channel is where the {@link SlashCommandInteractionEvent Event} got called
      * @param compID is the custom ID you set on an {@link ModalInteractionEvent} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -106,7 +107,7 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
@@ -121,7 +122,7 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
@@ -136,12 +137,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link MessageReceivedEvent Event} got called
+     * @param channel is where the {@link MessageReceivedEvent Event} got called
      * @param message is the raw content given by {@link Message#getContentRaw()}
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -151,12 +152,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link MessageReceivedEvent Event} got called
+     * @param channel is where the {@link MessageReceivedEvent Event} got called
      * @param name is the unicode or custom name of the {@link Emoji#getName()}
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -166,12 +167,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link StringSelectInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link StringSelectInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction Event} got called
+     * @param channel is where the {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction Event} got called
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenu SelectMenu} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -181,12 +182,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link EntitySelectInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link EntitySelectInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu Event} got called
+     * @param channel is where the {@link net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu Event} got called
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenu SelectMenu} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -196,12 +197,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
-     * @param source is a independent discord user object, which called the context
-     * @param target is a independent discord user object, which is the target of the call
+     * @param source is an independent discord user object, which called the context
+     * @param target is an independent discord user object, which is the target of the call
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -211,7 +212,7 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
@@ -226,12 +227,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
-     * @param user is a independent discord user object, which called the context
-     * @param channel is were the {@link MessageContextInteractionEvent Event} got called
+     * @param user is an independent discord user object, which called the context
+     * @param channel is where the {@link MessageContextInteractionEvent Event} got called
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
@@ -241,12 +242,12 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
      * <br><br>
      * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
      * </p>
      * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is were the {@link MessageContextInteractionEvent Event} got called
+     * @param channel is where the {@link MessageContextInteractionEvent Event} got called
      * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
