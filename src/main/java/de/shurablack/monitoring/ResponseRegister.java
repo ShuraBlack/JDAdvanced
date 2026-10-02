@@ -3,44 +3,51 @@ package de.shurablack.monitoring;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ResponseRegister {
 
-    private static ResponseRegister instance;
+    private static final ResponseRegister INSTANCE = new ResponseRegister();
 
-    private final Map<String, List<Double>> responseTimes = new HashMap<>();
+    private final Map<String, List<Double>> responseTimes = new ConcurrentHashMap<>();
 
     private ResponseRegister() {
         // Private constructor to prevent instantiation
     }
 
     public static ResponseRegister getInstance() {
-        if (instance == null) {
-            instance = new ResponseRegister();
-        }
-        return instance;
+        return INSTANCE;
     }
 
     public void trackRunnable(Runnable runnable, String command) {
         long startTime = System.nanoTime();
-        runnable.run();
-        long endTime = System.nanoTime();
-        double duration = (endTime - startTime) / 1.0e6;
-        addResponseTime(command, duration);
+        try {
+            runnable.run();
+        } finally {
+            addResponseTime(command, (System.nanoTime() - startTime) / 1.0e6);
+        }
     }
 
     public void addResponseTime(String command, double time) {
-        responseTimes.computeIfAbsent(command, k -> new java.util.ArrayList<>()).add(time);
-        if (responseTimes.get(command).size() > 1000) {
-            responseTimes.get(command).remove(0);
+        List<Double> times = responseTimes.computeIfAbsent(command, k -> Collections.synchronizedList(new ArrayList<>()));
+        synchronized (times) {
+            times.add(time);
+            if (times.size() > 1000) {
+                times.remove(0);
+            }
         }
     }
 
     public List<Double> getResponseTimes(String command) {
-        return responseTimes.getOrDefault(command, java.util.Collections.emptyList());
+        List<Double> times = responseTimes.getOrDefault(command, Collections.emptyList());
+        synchronized (times) {
+            return new ArrayList<>(times);
+        }
     }
 
     public Map<String, List<Double>> getAllResponseTimes() {

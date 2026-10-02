@@ -1,6 +1,7 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
+import de.shurablack.core.util.FileBanner;
 import de.shurablack.monitoring.VM;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.LocalData;
@@ -118,20 +119,6 @@ public class JDAUtil {
     }
 
     /**
-     * Creates a string containing a list of the available commands and their descriptions
-     * @return the generated string
-     */
-    private String createOverview() {
-        final StringBuilder s = new StringBuilder();
-
-        for (CommandAction action : commandActions) {
-            s.append(action.getName()).append(" -> ").append(action.getDescription()).append("\n");
-        }
-
-        return s.toString();
-    }
-
-    /**
      * Takes a string representing a command, and it returns an Optional<CommandAction> object
      * containing the CommandAction object for the given command if it exists,
      * or an empty Optional if the command does not exist.
@@ -188,9 +175,9 @@ public class JDAUtil {
                         return;
                     }
                     if (args[1].equals("mem")) {
-                        LOGGER.info("\n" + VM.getMemoryUsage());
+                        LOGGER.info("\n{}", VM.getMemoryUsage());
                     } else if (args[1].equals("load")) {
-                        LOGGER.info("\n" + VM.getProcessLoad());
+                        LOGGER.info("\n{}", VM.getProcessLoad());
                     } else {
                         LOGGER.error("Invalid input: performance <mem/load>");
                     }
@@ -219,13 +206,7 @@ public class JDAUtil {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
             try {
-                System.out.println("\n====================================================\n" +
-                        "-> Command Line Interface is ready <-\n" +
-                        "Made by ShuraBlack" +
-                        "\n====================================================\n" +
-                        "Available Commands:" +
-                        "\n====================================================\n" +
-                        createOverview() + "\n");
+                new FileBanner("/internal/banner.txt", commandActions).print(System.out);
 
                 while ((line = reader.readLine()) != null) {
                     Optional<CommandAction> action = findCommand(line);

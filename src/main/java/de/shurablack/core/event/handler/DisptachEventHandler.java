@@ -8,6 +8,7 @@ import de.shurablack.core.event.validation.Validation;
 import de.shurablack.core.event.validation.ValidationEvent;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.listener.DefaultInteractionReceiver;
+import de.shurablack.monitoring.ResponseRegister;
 import de.shurablack.listener.DefaultMessageReceiver;
 import de.shurablack.listener.DefaultReactionReceiver;
 import de.shurablack.listener.DefaultSlashReceiver;
@@ -70,12 +71,12 @@ public class DisptachEventHandler extends EventHandler {
     private final ConcurrentHashMap<Type, Map<String, Event>> events = new ConcurrentHashMap<>();
 
     /** A map of event identifier strings to the last time the event was called */
-    private final Map<String, Long> lastCallGlobal = new HashMap<>();
+    private final Map<String, Long> lastCallGlobal = new ConcurrentHashMap<>();
 
     /** A map of user ID strings to maps of event identifier
      * strings to the last time the event was called by that user
      */
-    private final Map<String, Map<String, Long>> lastCallUser = new HashMap<>();
+    private final Map<String, Map<String, Long>> lastCallUser = new ConcurrentHashMap<>();
 
     /**
      * Creates a new EventHandler object
@@ -157,6 +158,16 @@ public class DisptachEventHandler extends EventHandler {
     }
 
     /**
+     * Dispatches the task and records its execution time in the {@link ResponseRegister}
+     * @param type the interaction type
+     * @param identifier the unique string of the event
+     * @param task the task to execute
+     */
+    private void dispatch(final Type type, final String identifier, final Runnable task) {
+        Dispatcher.dispatch(() -> ResponseRegister.getInstance().trackRunnable(task, type.name() + "#" + identifier));
+    }
+
+    /**
      * Checks whether the event is on cooldown for the given user
      * @param identifier the unique string of the event
      * @param userID the unique ID of an discord user
@@ -194,7 +205,7 @@ public class DisptachEventHandler extends EventHandler {
                 return false;
             }
         } else {
-            Map<String,Long> data = new HashMap<>();
+            Map<String,Long> data = new ConcurrentHashMap<>();
             data.put(identifier, time);
             this.lastCallUser.put(userID,data);
             return false;
@@ -209,8 +220,11 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onButtonEvent(final String identifier, final ButtonInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
-            final ValidationEvent e = isValidGuild(identifier, Type.BUTTON, event.getMember(), event.getChannel().getId());
+        dispatch(Type.BUTTON, identifier, () -> {
+            // member is null in DMs, e.g. for user installed commands
+            final ValidationEvent e = event.getMember() != null
+                    ? isValidGuild(identifier, Type.BUTTON, event.getMember(), event.getChannel().getId())
+                    : isValid(identifier, Type.BUTTON, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
                 e.getEvent().getWorker().processButtonEvent(event.getMember(),event.getChannel(), event.getButton().getCustomId(), event);
@@ -229,7 +243,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGlobalSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GLOBAL_SLASH, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_SLASH, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -249,7 +263,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGuildSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GUILD_SLASH, identifier, () -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_SLASH, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -269,8 +283,11 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onModalEvent(final String identifier, final ModalInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
-            final ValidationEvent e = isValidGuild(identifier, Type.MODAL, event.getMember(), event.getChannel().getId());
+        dispatch(Type.MODAL, identifier, () -> {
+            // member is null in DMs, e.g. for user installed commands
+            final ValidationEvent e = event.getMember() != null
+                    ? isValidGuild(identifier, Type.MODAL, event.getMember(), event.getChannel().getId())
+                    : isValid(identifier, Type.MODAL, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
                 e.getEvent().getWorker().processModalEvent(event.getMember(),event.getChannel(), event.getModalId(), event);
@@ -289,7 +306,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onPrivateChannelEvent(final String identifier, final MessageReceivedEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.PRIVATE_CHANNEL, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.PRIVATE_CHANNEL, event.getAuthor(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -307,7 +324,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onPublicChannelEvent(final String identifier, final MessageReceivedEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.PUBLIC_CHANNEL, identifier, () -> {
             final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_CHANNEL, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -325,7 +342,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onPrivateReactionEvent(final String identifier, final MessageReactionAddEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.PRIVATE_REACTION, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.PRIVATE_REACTION, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -343,7 +360,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onPublicReactionEvent(final String identifier, final MessageReactionAddEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.PUBLIC_REACTION, identifier, () -> {
             final ValidationEvent e = isValidGuild(identifier, Type.PUBLIC_REACTION, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -361,7 +378,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onStringSelectionMenuEvent(final String identifier, final StringSelectInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.STRING_SELECTION, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -382,8 +399,8 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onEntitySelectionMenuEvent(final String identifier, EntitySelectInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
-            final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
+        dispatch(Type.ENTITY_SELECTION, identifier, () -> {
+            final ValidationEvent e = isValid(identifier, Type.ENTITY_SELECTION, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
                 e.getEvent().getWorker().processEntitySelectEvent(event.getMember(),event.getChannel()
@@ -403,7 +420,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGuildUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GUILD_USER_CONTEXT, identifier, () -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_USER_CONTEXT, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -424,7 +441,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGlobalUserContextEvent(final String identifier, final UserContextInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GLOBAL_USER_CONTEXT, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_USER_CONTEXT, event.getUser(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -445,7 +462,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGuildMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GUILD_MSG_CONTEXT, identifier, () -> {
             final ValidationEvent e = isValidGuild(identifier, Type.GUILD_MSG_CONTEXT, event.getMember(), event.getChannel().getId());
 
             if (e.isSuccess()) {
@@ -466,7 +483,7 @@ public class DisptachEventHandler extends EventHandler {
      */
     @Override
     public void onGlobalMessageContextEvent(final String identifier, final MessageContextInteractionEvent event) {
-        Dispatcher.dispatch(() -> {
+        dispatch(Type.GLOBAL_MSG_CONTEXT, identifier, () -> {
             final ValidationEvent e = isValid(identifier, Type.GLOBAL_MSG_CONTEXT, event.getUser(), event.getChannel().getId());
             if (e.isSuccess()) {
                 e.getEvent().getWorker().processGlobalMessageContextEvent(event.getUser(), event.getChannel()

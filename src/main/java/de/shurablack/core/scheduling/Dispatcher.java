@@ -48,20 +48,19 @@ public class Dispatcher {
     /**
      * Method to start the service executor.
      * <br>
-     * The service executor is a cached thread pool executor with a core pool size of the available processors
-     * and a maximum pool size of the available processors multiplied by the thread scale from the config.
+     * The service executor is a fixed thread pool with <code>dispatcher_thread_max</code> threads from the config
+     * (default: available processors * 2). Tasks beyond that wait in a queue instead of being discarded.
      */
     public static void start() {
         if (SERVICE != null) {
             return;
         }
 
-        SERVICE = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-        SERVICE.setCorePoolSize(Config.getConfigAsInt("dispatcher_thread_core", Runtime.getRuntime().availableProcessors()));
-        SERVICE.setMaximumPoolSize(Config.getConfigAsInt("dispatcher_thread_max", Runtime.getRuntime().availableProcessors() * 2));
-        SERVICE.allowCoreThreadTimeOut(false);
-        SERVICE.setKeepAliveTime(10, TimeUnit.MINUTES);
-        SERVICE.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        // Fixed pool with a queue: the former cached pool used a SynchronousQueue, so every task beyond
+        // the max thread count was rejected and silently discarded instead of waiting for a free thread.
+        final int threads = Config.getConfigAsInt("dispatcher_thread_max", Runtime.getRuntime().availableProcessors() * 2);
+        SERVICE = new ThreadPoolExecutor(threads, threads, 10, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
+        SERVICE.allowCoreThreadTimeOut(true);
 
         final String msg = String.format("Started Service Executor with <\u001b[32;1m%d\u001b[0m> Threads", SERVICE.getMaximumPoolSize());
         LOGGER.info(msg);
@@ -72,7 +71,14 @@ public class Dispatcher {
      * @param task the runnable task which will be executed in a seperate thread
      */
     public static void dispatch(final Runnable task) {
-        SERVICE.submit(task);
+        // execute instead of submit: submit stores exceptions in a Future nobody reads, hiding every failure
+        SERVICE.execute(() -> {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                LOGGER.error("Uncaught exception in dispatched task", t);
+            }
+        });
     }
 
     /**
