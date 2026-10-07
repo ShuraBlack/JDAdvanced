@@ -3,6 +3,7 @@ package de.shurablack.listener;
 import de.shurablack.core.event.handler.EventHandler;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +48,11 @@ public class DefaultInteractionReceiver extends ListenerAdapter {
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         handler.onStringSelectionMenuEvent(event.getComponentId(), event);
+    }
+
+    @Override
+    public void onEntitySelectInteraction(@NotNull EntitySelectInteractionEvent event) {
+        handler.onEntitySelectionMenuEvent(event.getComponentId(), event);
     }
 
 }

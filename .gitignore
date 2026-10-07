@@ -10,6 +10,7 @@
 docs/
 target/
 /*.properties
+!/config.example.properties
 properties/
 
 # AWS User-specific

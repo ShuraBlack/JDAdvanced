@@ -5,8 +5,6 @@ import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInterac
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
@@ -70,15 +68,5 @@ public class DefaultSlashReceiver extends ListenerAdapter {
     @Override
     public void onCommandAutoCompleteInteraction(@NotNull CommandAutoCompleteInteractionEvent event) {
         handler.onAutoCompleteEvent(event.getName(), event);
-    }
-
-    @Override
-    public void onEntitySelectInteraction(EntitySelectInteractionEvent event) {
-        handler.onEntitySelectionMenuEvent(event.getComponentId(), event);
-    }
-
-    @Override
-    public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
-        handler.onStringSelectionMenuEvent(event.getComponentId(), event);
     }
 }

@@ -1,8 +1,12 @@
 package de.shurablack.core.event.validation;
 
 import de.shurablack.core.util.ServerUtil;
+import de.shurablack.localization.Language;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+
+import java.util.Locale;
 
 /**
  * Enum representing various validation states for interactions.
@@ -75,6 +79,32 @@ public enum Validation {
     public MessageEmbed getEmbed() {
         return new EmbedBuilder()
                 .setDescription(message)
+                .setColor(ServerUtil.RED)
+                .build();
+    }
+
+    /**
+     * Retrieves the message in the given language. Translations are looked up via {@link Language}
+     * with the key "validation.&lt;name&gt;" (e.g. "validation.on_cooldown"), the english message is the fallback.
+     *
+     * @param locale The discord locale of the user.
+     * @return The translated or the english validation message.
+     */
+    public String getMessage(final DiscordLocale locale) {
+        final String translated = Language.get(locale, "validation." + name().toLowerCase(Locale.ROOT));
+        return translated.isEmpty() ? message : translated;
+    }
+
+    /**
+     * Generates a Discord embed message in the given language.
+     *
+     * @param locale The discord locale of the user.
+     * @return A {@link MessageEmbed} containing the translated validation message.
+     * @see #getMessage(DiscordLocale)
+     */
+    public MessageEmbed getEmbed(final DiscordLocale locale) {
+        return new EmbedBuilder()
+                .setDescription(getMessage(locale))
                 .setColor(ServerUtil.RED)
                 .build();
     }

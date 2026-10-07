@@ -216,3 +216,19 @@ public void processAutoCompleteEvent(final User user, final MessageChannelUnion 
     event.replyChoiceStrings(songs.search(typed, 25)).queue();
 }
 ```
+
+## Localization
+Load one `.properties` file per language, named after the language (`de.properties`) or a Discord locale tag (`en-US.properties`, `pt-BR.properties`).
+`Language.get(event, "code")` picks the language of the user who triggered the interaction. It falls back key by key: full locale (`en-US`) -> base language (`en`) -> default language.
+
+```java
+Language.loadLanguageFile("lang/en.properties");
+Language.loadLanguageFile("lang/de.properties");
+Language.setDefaultLanguage("en");
+
+event.reply(Language.get(event, "welcome")).queue();
+```
+
+The error messages of the event handlers (cooldown, wrong channel, ...) can be translated with the keys
+`validation.is_bot`, `validation.no_event`, `validation.wrong_channel`, `validation.on_cooldown` and `validation.no_permission`.
+Without a translation the english default is used.

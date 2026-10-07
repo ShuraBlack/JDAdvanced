@@ -1,6 +1,14 @@
 package de.shurablack.localization;
 
+import de.shurablack.core.event.validation.Validation;
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import java.util.Properties;
 import java.util.Set;
@@ -8,6 +16,35 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LanguageTest {
+
+    @AfterEach
+    void reset() {
+        Language.reset();
+    }
+
+    private static void write(Path dir, String name, String content) throws IOException {
+        final Path file = dir.resolve(name);
+        Files.writeString(file, content);
+        assertTrue(Language.loadLanguageFile(file.toString()));
+    }
+
+    @Test
+    void localeFallsBackToBaseLanguageThenDefaultPerKey(@TempDir Path dir) throws IOException {
+        write(dir, "en.properties", "greet=Hello\nbye=Bye\n");
+        write(dir, "de.properties", "greet=Hallo\nvalidation.on_cooldown=Bitte warte kurz\n");
+        Language.setDefaultLanguage("en");
+
+        assertEquals("Hallo", Language.get(DiscordLocale.GERMAN, "greet"));
+        // Missing in de -> default language instead of an empty text
+        assertEquals("Bye", Language.get(DiscordLocale.GERMAN, "bye"));
+        // en-GB file doesnt exist -> base language "en"
+        assertEquals("Hello", Language.get(DiscordLocale.ENGLISH_UK, "greet"));
+        assertEquals("Hello", Language.get(DiscordLocale.FRENCH, "greet"));
+        assertEquals("", Language.get(DiscordLocale.GERMAN, "missing"));
+
+        assertEquals("Bitte warte kurz", Validation.ON_COOLDOWN.getMessage(DiscordLocale.GERMAN));
+        assertEquals(Validation.ON_COOLDOWN.getMessage(), Validation.ON_COOLDOWN.getMessage(DiscordLocale.FRENCH));
+    }
 
     @Test
     void setDefaultLanguageReturnsFalseForNonExistentLanguage() {
