@@ -1,12 +1,8 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
-import de.shurablack.core.util.Config;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,24 +64,7 @@ public class ShardUtil extends BaseUtil {
 
     @Override
     void uploadCommands() {
-        JDA jda = JDABuilder.createLight(Config.getConfig("access_token"))
-                .enableIntents(GatewayIntent.GUILD_MESSAGES)
-                .disableIntents(
-                        GatewayIntent.MESSAGE_CONTENT,
-                        GatewayIntent.GUILD_MEMBERS,
-                        GatewayIntent.GUILD_WEBHOOKS,
-                        GatewayIntent.GUILD_INVITES,
-                        GatewayIntent.GUILD_VOICE_STATES,
-                        GatewayIntent.GUILD_PRESENCES,
-                        GatewayIntent.GUILD_MESSAGE_TYPING,
-                        GatewayIntent.DIRECT_MESSAGES,
-                        GatewayIntent.DIRECT_MESSAGE_REACTIONS,
-                        GatewayIntent.DIRECT_MESSAGE_TYPING
-                )
-                .build();
-
-        CommandUploadBuilder.uploadInteractionCommands(jda);
-        jda.shutdown();
+        CommandUploadBuilder.uploadInteractionCommands(SHARD_MANAGER);
     }
 
     /**

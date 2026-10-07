@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.*;
+import net.dv8tion.jda.api.sharding.ShardManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class CommandUploadBuilder {
 
@@ -28,6 +30,19 @@ public class CommandUploadBuilder {
     }
 
     public static void uploadInteractionCommands(JDA jda) {
+        upload(jda, jda::getGuildById);
+    }
+
+    /**
+     * Uploads via the ready shards. Guilds are looked up across all shards
+     * @param manager the {@link ShardManager} with all shards ready
+     */
+    public static void uploadInteractionCommands(ShardManager manager) {
+        // Global commands are application wide, any shard can register them
+        upload(manager.getShards().get(0), manager::getGuildById);
+    }
+
+    private static void upload(JDA jda, Function<String, Guild> guilds) {
         Map<String, List<CommandData>> commands = buildCommands();
 
         List<CommandData> global = commands.remove("GLOBAL");
@@ -40,7 +55,7 @@ public class CommandUploadBuilder {
 
         for (Map.Entry<String, List<CommandData>> entry : commands.entrySet()) {
             String guildId = entry.getKey();
-            Guild guild = jda.getGuildById(guildId);
+            Guild guild = guilds.apply(guildId);
             if (guild == null) {
                 LOGGER.warn("Guild with ID {} not found! Skipping command registration for this guild.", guildId);
                 continue;
