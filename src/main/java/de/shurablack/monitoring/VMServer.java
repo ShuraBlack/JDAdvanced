@@ -10,9 +10,8 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class VMServer {
 
@@ -22,7 +21,7 @@ public class VMServer {
 
     private ServerSocket server;
 
-    private final List<Client> clients = Collections.synchronizedList(new ArrayList<>());
+    private final List<Client> clients = new CopyOnWriteArrayList<>();
 
     private int readInterval = 5;
 
@@ -64,10 +63,13 @@ public class VMServer {
         }
 
         final int port = Integer.parseInt(Config.getConfig("vm.port"));
+
+        // Loopback by default: the stream is unauthenticated. Set vm.host=0.0.0.0 to expose it
+        final String host = Config.getConfig("vm.host") == null ? "127.0.0.1" : Config.getConfig("vm.host");
         tracker = MBeansTracker.get();
         try {
-            server = new ServerSocket(port, 1, InetAddress.getByAddress(new byte[]{0, 0, 0, 0}));
-            LOGGER.info("VMServer started on port {}", port);
+            server = new ServerSocket(port, 1, InetAddress.getByName(host));
+            LOGGER.info("VMServer started on {}:{}", host, port);
             listenForClients();
         } catch (Exception e) {
             LOGGER.error("Failed to start VMServer on port {}", port, e);

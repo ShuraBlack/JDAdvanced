@@ -186,7 +186,7 @@ public class JDAUtil {
                     if (this.onExit != null) {
                         onExit.accept(input);
                     }
-                    System.exit(1);
+                    System.exit(0);
                 }
         ));
         new Thread(() -> {

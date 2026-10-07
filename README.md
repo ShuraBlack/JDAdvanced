@@ -13,18 +13,16 @@ or check the <b>LICENSE</b> file in the project
 ## Dependencies
 ❤️ Thanks to all the great programmers out there, which made all of this possible
 
-This project requires Java 8+ [SDK](https://www.oracle.com/java/technologies/downloads/)<br>
+This project requires Java 11+ [SDK](https://www.oracle.com/java/technologies/downloads/)<br>
 All dependencies are managed by [Maven](https://maven.apache.org)
-- [JDA](https://github.com/discord-jda/JDA) - **5.3.2**
+- [JDA](https://github.com/discord-jda/JDA) - **6.4.1**
 - [Discord-Webhooks](https://github.com/MinnDevelopment/discord-webhooks) - **0.8.2**
-- [Log4j Core](https://github.com/apache/logging-log4j2) - **2.20.0**
-- [Log4j API](https://github.com/apache/logging-log4j2) - **2.0.5**
-- [Log4J Simple](https://github.com/apache/logging-log4j2) - **2.0.5**
-- [JCABI-Log](https://github.com/jcabi/jcabi-log) - **0.22.0**
+- [SLF4J API](https://github.com/qos-ch/slf4j) - **2.0.17** *(bring your own SLF4J implementation, e.g. Logback or Log4j2)*
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
 - [Json](https://github.com/stleary/JSON-java) - **20231013**
 - [Classgraph](https://github.com/classgraph/classgraph) - **4.8.179**
-- [JUnit](https://github.com/junit-team/junit5) - **5.13.0-M2** *(Test scope)*
+- [JUnit](https://github.com/junit-team/junit5) - **5.13.4** *(Test scope)*
+- [Mockito](https://github.com/mockito/mockito) - **5.14.2** *(Test scope)*
 
 ## Packages
 - **core** -> Main classess of the project

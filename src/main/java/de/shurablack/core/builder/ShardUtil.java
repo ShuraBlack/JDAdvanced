@@ -214,7 +214,7 @@ public class ShardUtil {
                     if (onExit != null) {
                         onExit.accept(null);
                     }
-                    System.exit(1);
+                    System.exit(0);
                 }
         ));
         new Thread(() -> {
