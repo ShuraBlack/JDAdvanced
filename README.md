@@ -104,67 +104,17 @@ final JDAUtil util = UtilBuilder.create(builder, handler)
 ```
 
 ## Creating the EventHandler Object
-The EventHandler is responsible for managing JDA events and handing them off to the corresponding EventWorker. 
-If any handling is missing, you can extend the class and implement your own function.
-Each event will be dispatched and processed by a separate thread (make sure to create your EventWorker in a concurrent manner).
-To declare functions of an EventWorker as active, you can utilize the Interaction and InteractionSet.<br>
+The EventHandler validates incoming events (bots, channel restrictions, cooldowns, permissions) and hands them off to the corresponding EventWorker.
+The `NativeEventHandler` runs the workers on the JDA event thread, the `DispatchEventHandler` on a thread pool (make sure your workers are thread safe).
+Workers and command handlers are declared with annotations and discovered on startup.
 
 **Example:**
 
 ```java
-final EventHandler handler = EventHandler.create()
-  // Set Prefix for Messages and boolean for ingoreBotRequests
-  .set(EventHandler.DEFAULT_PREFIX, true)
-  .registerEvent(
-    InteractionSet().create(
-      new EventWorkerA(),
-      Interaction.create(GLOBAL_SLASH, "identifier").setGlobalCD(30),
-      Interaction.create(GUILD_SLASH, "identifier")
-    ),
-    InteractionSet().create(
-      new EventWorkerB(),
-      Interaction.create(GLOBAL_SLASH, "identifier").setUserCD(10),
-      Interaction.create(GUILD_SLASH, "identifier").setChannelRestriction(List.of(...))
-    )
-  );
-```
-Alternatively you can use a JSON file to declare your InteractionSets
-```json
-{"interactionSets": [{
-  "worker": "de.shurablack.core.event.Test",
-  "interactions": [
-    {
-      "identifier": "identifier",
-      "globalCooldown": 1000,
-      "userCooldown": 1000,
-      "requiredPermissions": ["MESSAGE_MANAGE"],
-      "format": "BUTTON",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
-      ]
-    },
-    {
-      "identifier": "identifier",
-      "globalCooldown": -1,
-      "userCooldown": -1,
-      "format": "MODAL",
-      "channelRestriction": [
-        "channelID",
-        "channelID"
-      ]
-    }
-  ]
-}]}
-```
-and load it via
-```java
-List<InteractionSet> list = InteractionSet.fromJson("path/to/file.json");
-```
-or use the new annotation style to annotate your EventWorker class.
-This will automatically register the EventWorker and all its interactions.
-```java
-List<InteractionSet> list = InteractionSet.fromAnnotation();
+final EventHandler handler = DispatchEventHandler
+    // Message prefix, ignore bots, ephemeral error feedback, admin bypass
+    .create("!", true, true, false)
+    .registerEvent(InteractionSet.fromAnnotation());
 ```
 
 Cooldowns (in seconds), channel restrictions and required permissions can be set per process.
@@ -176,7 +126,6 @@ public void processGuildSlashEvent(final Member member, final MessageChannelUnio
     // Only reached by members with the ban permission
 }
 ```
-
 
 ## Write Listener
 Listeners should maintain a reference to the EventHandler in order to pass the JDA events. Default implementations can be found in the _de.shurablack.listener_ package.
@@ -200,16 +149,18 @@ public class DefaultInteractionReceiver extends ListenerAdapter {
 ```
 
 ## Write EventWorker
-Your Worker class should extend the EventWorker and implement all the active Interactions. Once implemented, you can register them in the EventHandler as an InteractionSet.
+Your Worker class should extend the EventWorker and override the processes it handles. Annotate each with `@EventProcess`, `InteractionSet.fromAnnotation()` picks them up.
 
 **Example:**
 
 ```java
-public Worker extends EventWorker {
+public class Worker extends EventWorker {
 
+  @EventProcess(identifier = "confirm")
   @Override
-  public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event)
+  public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event) {
     // Your Implementation
+  }
 }
 ```
 

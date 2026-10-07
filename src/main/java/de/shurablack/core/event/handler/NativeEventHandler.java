@@ -40,12 +40,6 @@ public class NativeEventHandler extends AbstractEventHandler {
     }
 
     @Override
-    public NativeEventHandler registerEvent(final InteractionSet... set) {
-        super.registerEvent(set);
-        return this;
-    }
-
-    @Override
     public NativeEventHandler registerEvent(final List<InteractionSet> set) {
         super.registerEvent(set);
         return this;

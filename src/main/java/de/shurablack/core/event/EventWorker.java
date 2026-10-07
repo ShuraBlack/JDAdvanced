@@ -24,7 +24,7 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
  * {@link EventWorker} cant be instantiated directly and should be extended
  * by an event processing class.
  * <br><br>
- * Override the desired event process function and register your worker with the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(InteractionSet...)}.
+ * Override the desired event process function and register your worker with the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(java.util.List)}.
  * <br><br>
  * The class will throw a {@link ImplementationException} if the method gets called, but isn't implemented probably
  * or still calls the <b>super()</b> function.

@@ -1,12 +1,13 @@
-package de.shurablack.core.event.handler;
+package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
-import de.shurablack.core.event.interaction.Interaction;
-import de.shurablack.core.event.interaction.InteractionSet;
-import de.shurablack.core.event.interaction.Type;
+import de.shurablack.core.event.handler.AbstractEventHandler;
+import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.event.validation.Validation;
 import net.dv8tion.jda.api.entities.User;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -26,10 +27,10 @@ class CooldownTest {
 
     @Test
     void userAndGlobalCooldowns() {
-        final AbstractEventHandler handler = NativeEventHandler.createDefault().registerEvent(InteractionSet.create(mock(EventWorker.class),
+        final AbstractEventHandler handler = NativeEventHandler.createDefault().registerEvent(List.of(InteractionSet.create(mock(EventWorker.class),
                 Interaction.create(Type.BUTTON, "user").setUserCD(60),
                 Interaction.create(Type.BUTTON, "global").setGlobalCD(60),
-                Interaction.create(Type.BUTTON, "free")));
+                Interaction.create(Type.BUTTON, "free"))));
         final User alice = user("1");
         final User bob = user("2");
 
@@ -46,8 +47,8 @@ class CooldownTest {
 
     @Test
     void blockedCallDoesntStartTheOtherCooldown() {
-        final AbstractEventHandler handler = NativeEventHandler.createDefault().registerEvent(InteractionSet.create(mock(EventWorker.class),
-                Interaction.create(Type.BUTTON, "both").setGlobalCD(60).setUserCD(60)));
+        final AbstractEventHandler handler = NativeEventHandler.createDefault().registerEvent(List.of(InteractionSet.create(mock(EventWorker.class),
+                Interaction.create(Type.BUTTON, "both").setGlobalCD(60).setUserCD(60))));
         final User alice = user("1");
 
         assertEquals(Validation.SUCCESS, call(handler, "both", alice));

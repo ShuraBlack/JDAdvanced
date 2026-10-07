@@ -1,13 +1,12 @@
-package de.shurablack.core.event.handler;
+package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
-import de.shurablack.core.event.interaction.Interaction;
-import de.shurablack.core.event.interaction.InteractionSet;
-import de.shurablack.core.event.interaction.Type;
+import de.shurablack.core.event.handler.NativeEventHandler;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,7 +29,7 @@ class AutoCompleteTest {
     void routesToWorkerByCommandName() {
         final EventWorker worker = mock(EventWorker.class);
         final NativeEventHandler handler = NativeEventHandler.createDefault();
-        handler.registerEvent(InteractionSet.create(worker, Interaction.create(Type.AUTO_COMPLETE, "play")));
+        handler.registerEvent(List.of(InteractionSet.create(worker, Interaction.create(Type.AUTO_COMPLETE, "play"))));
 
         final CommandAutoCompleteInteractionEvent event = mock(CommandAutoCompleteInteractionEvent.class, RETURNS_DEEP_STUBS);
         when(event.getFocusedOption().getName()).thenReturn("song");

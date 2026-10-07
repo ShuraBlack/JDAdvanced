@@ -1,9 +1,7 @@
-package de.shurablack.core.event.handler;
+package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
-import de.shurablack.core.event.interaction.Interaction;
-import de.shurablack.core.event.interaction.InteractionSet;
-import de.shurablack.core.event.interaction.Type;
+import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.event.validation.Validation;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
@@ -11,6 +9,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,8 +22,8 @@ class PermissionTest {
 
     // errorFeedback off, so failed validations dont need a reply mock
     private final NativeEventHandler handler = NativeEventHandler.create("!", true, false, false)
-            .registerEvent(InteractionSet.create(worker,
-                    Interaction.create(Type.BUTTON, "ban").setRequiredPermissions(Permission.BAN_MEMBERS)));
+            .registerEvent(List.of(InteractionSet.create(worker,
+                    Interaction.create(Type.BUTTON, "ban").setRequiredPermissions(Permission.BAN_MEMBERS))));
 
     private ButtonInteractionEvent click(boolean allowed) {
         final GuildChannel channel = mock(GuildChannel.class);

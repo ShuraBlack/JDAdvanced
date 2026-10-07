@@ -98,19 +98,6 @@ public abstract class AbstractEventHandler extends EventHandler {
      * @return the handler for chaining
      */
     @Override
-    public AbstractEventHandler registerEvent(final InteractionSet... set) {
-        for (InteractionSet os : set) {
-            registerEventSubRoutine(os);
-        }
-        return this;
-    }
-
-    /**
-     * Registers a set of events with the EventHandler object
-     * @param set of events which will be created
-     * @return the handler for chaining
-     */
-    @Override
     public AbstractEventHandler registerEvent(final List<InteractionSet> set) {
         for (InteractionSet os : set) {
             registerEventSubRoutine(os);

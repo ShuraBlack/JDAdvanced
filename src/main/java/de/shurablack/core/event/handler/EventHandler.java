@@ -45,8 +45,6 @@ public abstract class EventHandler {
         }
     }
 
-    public abstract EventHandler registerEvent(final InteractionSet... set);
-
     public abstract EventHandler registerEvent(final List<InteractionSet> set);
 
     public abstract void onButtonEvent(final String identifier, final ButtonInteractionEvent event);

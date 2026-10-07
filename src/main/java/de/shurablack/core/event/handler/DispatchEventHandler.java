@@ -55,12 +55,6 @@ public class DispatchEventHandler extends AbstractEventHandler {
     }
 
     @Override
-    public DispatchEventHandler registerEvent(final InteractionSet... set) {
-        super.registerEvent(set);
-        return this;
-    }
-
-    @Override
     public DispatchEventHandler registerEvent(final List<InteractionSet> set) {
         super.registerEvent(set);
         return this;

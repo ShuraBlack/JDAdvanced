@@ -14,7 +14,7 @@ import java.util.Set;
  * The Event class is a Java class that represents a user-defined event, with a worker
  * that does something when the event is triggered, and optional cooldown and channel restrictions.
  * <br><br>
- * This class will be create when you call the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(InteractionSet...)} with valid
+ * This class will be create when you call the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(java.util.List)} with valid
  * {@link InteractionSet}
  * </p>
  *

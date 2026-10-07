@@ -86,7 +86,7 @@ public class Interaction {
      * @param identifier the specified unique string
      * @return an Interaction for chaining
      */
-    public static Interaction create(final Type type, final String identifier) {
+    static Interaction create(final Type type, final String identifier) {
         return new Interaction(type, identifier, false);
     }
 
@@ -97,7 +97,7 @@ public class Interaction {
      * @param bypassGuildValidity if true, the interaction will bypass guild validity checks (only for GUILD slash commands)
      * @return an Interaction for chaining
      */
-    public static Interaction create(final Type type, final String identifier, final boolean bypassGuildValidity) {
+    static Interaction create(final Type type, final String identifier, final boolean bypassGuildValidity) {
         return new Interaction(type, identifier, bypassGuildValidity);
     }
 
@@ -123,7 +123,7 @@ public class Interaction {
      * @param globalCooldownSec the specified time in seconds
      * @return the Interaction for chaining
      */
-    public Interaction setGlobalCD(final long globalCooldownSec) {
+    Interaction setGlobalCD(final long globalCooldownSec) {
         if (globalCooldownSec < NO_COOLDOWN) {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
@@ -143,7 +143,7 @@ public class Interaction {
      * @param userCooldownSec the specified time in seconds
      * @return the Interaction for chaining
      */
-    public Interaction setUserCD(final long userCooldownSec) {
+    Interaction setUserCD(final long userCooldownSec) {
         if (userCooldownSec < NO_COOLDOWN) {
             throw new IllegalArgumentException("Cooldown cant be lower than -1");
         }
@@ -161,7 +161,7 @@ public class Interaction {
      * @param channelIDs the specified list of channelIDs
      * @return the Interaction for chaining
      */
-    public Interaction setChannelRestriction(final List<String> channelIDs) {
+    Interaction setChannelRestriction(final List<String> channelIDs) {
         this.channelRestriction.addAll(channelIDs);
         return this;
     }
@@ -172,7 +172,7 @@ public class Interaction {
      * @param permissions the required permissions
      * @return the Interaction for chaining
      */
-    public Interaction setRequiredPermissions(final Permission... permissions) {
+    Interaction setRequiredPermissions(final Permission... permissions) {
         this.requiredPermissions.addAll(Arrays.asList(permissions));
         return this;
     }

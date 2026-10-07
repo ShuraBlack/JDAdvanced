@@ -5,15 +5,10 @@ import de.shurablack.core.event.annotation.*;
 import de.shurablack.core.event.annotation.command.SlashCommand;
 import de.shurablack.core.event.annotation.command.CommandHandler;
 import de.shurablack.core.util.ClassScan;
-import de.shurablack.core.util.FileUtil;
-import de.shurablack.core.util.LocalData;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ScanResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.dv8tion.jda.api.Permission;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -55,7 +50,7 @@ public class InteractionSet {
      * @param interactions the set of {@link Interaction Options}
      * @return the built InteractionSet
      */
-    public static InteractionSet create(final EventWorker worker, final Interaction... interactions) {
+    static InteractionSet create(final EventWorker worker, final Interaction... interactions) {
         InteractionSet interactionSet = new InteractionSet();
         interactionSet.worker = worker;
         interactionSet.interactions.addAll(Arrays.asList(interactions));
@@ -74,66 +69,6 @@ public class InteractionSet {
      */
     public EventWorker getWorker() {
         return worker;
-    }
-
-    /**
-     * This static method creates a list of InteractionSets from a JSON file.
-     * <br><br>
-     * Check out the GitHub Wiki for more information's, on how to structure the JSON file.
-     *
-     * @param path the path to the JSON file
-     * @return the list of InteractionSets
-     */
-    public static List<InteractionSet> fromJson(final String path) {
-        JSONObject jsonObject = FileUtil.loadJson(path);
-        if (jsonObject == null) {
-            return new ArrayList<>();
-        }
-        List<InteractionSet> interactionSets = new ArrayList<>();
-
-        JSONArray jsonArray = jsonObject.getJSONArray("interactionSets");
-        try {
-            for (int idx = 0; idx < jsonArray.length(); idx++) {
-                JSONObject interactionSet = jsonArray.getJSONObject(idx);
-                Class<?> cls = Class.forName(interactionSet.getString("worker"));
-                Object worker = cls.getDeclaredConstructor().newInstance();
-
-                List<Interaction> interactionsList = new ArrayList<>();
-                JSONArray interactions = interactionSet.getJSONArray("interactions");
-                for (int subidx = 0 ; subidx < interactions.length(); subidx++) {
-                    JSONObject interaction = interactions.getJSONObject(subidx);
-                    Type type = Type.valueOf(interaction.getString("type"));
-                    String identifier = interaction.getString("identifier");
-                    long globalCooldown = interaction.getLong("globalCooldown");
-                    long userCooldown = interaction.getLong("userCooldown");
-                    JSONArray channelRestriction = interaction.getJSONArray("channelRestriction");
-                    List<String> channelRestrictionList = new ArrayList<>();
-                    for (int i = 0; i < channelRestriction.length(); i++) {
-                        channelRestrictionList.add(LocalData.getChannelID(channelRestriction.getString(i)));
-                    }
-                    Interaction interactionObject = Interaction.create(type, identifier)
-                            .setGlobalCD(globalCooldown)
-                            .setUserCD(userCooldown)
-                            .setChannelRestriction(channelRestrictionList);
-                    // Optional, permission names like "MESSAGE_MANAGE"
-                    JSONArray permissions = interaction.optJSONArray("requiredPermissions");
-                    for (int i = 0; permissions != null && i < permissions.length(); i++) {
-                        interactionObject.setRequiredPermissions(Permission.valueOf(permissions.getString(i)));
-                    }
-                    interactionsList.add(interactionObject);
-                }
-                InteractionSet interactionSetObject = InteractionSet.create(
-                        (EventWorker) worker,
-                        interactionsList.toArray(new Interaction[0])
-                );
-                interactionSets.add(interactionSetObject);
-            }
-        } catch (ClassNotFoundException | InvocationTargetException | InstantiationException
-                 | IllegalAccessException | NoSuchMethodException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-        return interactionSets;
     }
 
     /**
