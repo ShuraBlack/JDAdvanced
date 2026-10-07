@@ -31,18 +31,51 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - **localization** -> Language and timezone handling
 
 ## Download
-Currently this project only supports [GitHub Realse](https://github.com/ShuraBlack/JDAdvanced/releases) with a **.jar**.
+JDAdvanced is available via [JitPack](https://jitpack.io/#ShuraBlack/JDAdvanced). Replace `VERSION` with a release tag (e.g. `1.1.0`).
+
+**Maven:**
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.ShuraBlack</groupId>
+    <artifactId>JDAdvanced</artifactId>
+    <version>VERSION</version>
+</dependency>
+```
+
+**Gradle:**
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.ShuraBlack:JDAdvanced:VERSION'
+}
+```
+
+Alternatively, the **.jar** is attached to each [GitHub Release](https://github.com/ShuraBlack/JDAdvanced/releases).
 
 
 ## Creating the JDAUtil Object
 To create the JDAUtil object, you can utilize the UtilBuilder. Prior to that, you should create a "config.properties" file in the root folder (development) or next to the **.jar** file (deployment)
-that includes at least a property for the "access_token". Afterward, you can call the init function, which will load the config file, initialize the AssetPool, and LocalData.
+that includes at least a property for the "access_token". Copy the [config.example.properties](config.example.properties) to get all available options. Afterward, you can call the init function, which will load the config file, initialize the AssetPool, and LocalData.
+> **HINT:** Set `commands.auto-upload=true` to upload your slash and context commands on launch. Only commands that changed compared to the ones registered at Discord get uploaded.
+> In the console, `upload` does the same on demand and `upload force` uploads everything.
+
 This builder requires a JDABuilder and an EventHandler object. For more information on building the JDA object, please refer to the [JDA](https://github.com/discord-jda/JDA) documentation.<br>
 
 **Example:**
 
 ```java
 // Initialize the UtilBuilder
+// Optional: pass your base packages, e.g. UtilBuilder.init("de.mybot"), to only scan those for workers, cron tasks and commands
 UtilBuilder.init();
 
 // Create a JDABuilder object to build the Discord bot
@@ -166,5 +199,20 @@ public Worker extends EventWorker {
   @Override
   public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event)
     // Your Implementation
+}
+```
+
+### Auto Complete
+Mark an option with `autoComplete = true` and suggest values while the user types. The identifier is the command name.
+Discord accepts up to 25 choices within 3 seconds. They are only suggestions, so validate the submitted value in the command itself.
+
+```java
+@CommandOption(type = OptionType.STRING, name = "song", description = "The song to play", autoComplete = true)
+
+@EventProcess(identifier = "play")
+@Override
+public void processAutoCompleteEvent(final User user, final MessageChannelUnion channel, final String option, final CommandAutoCompleteInteractionEvent event) {
+    final String typed = event.getFocusedOption().getValue();
+    event.replyChoiceStrings(songs.search(typed, 25)).queue();
 }
 ```

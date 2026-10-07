@@ -13,4 +13,6 @@ public @interface CommandOption {
     int maxLength() default -1;
     boolean required() default false;
     OptionChoice[] choices() default {};
+    // Dynamic suggestions via EventWorker#processAutoCompleteEvent, cant be combined with choices
+    boolean autoComplete() default false;
 }

@@ -1,16 +1,20 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.annotation.command.*;
-import io.github.classgraph.ClassGraph;
+import de.shurablack.core.util.ClassScan;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.*;
+import net.dv8tion.jda.api.requests.RestAction;
+import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CommandUploadBuilder {
 
@@ -30,27 +35,33 @@ public class CommandUploadBuilder {
     }
 
     public static void uploadInteractionCommands(JDA jda) {
-        upload(jda, jda::getGuildById);
+        uploadInteractionCommands(jda, false);
+    }
+
+    /**
+     * @param jda the bot
+     * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
+     */
+    public static void uploadInteractionCommands(JDA jda, boolean onlyChanged) {
+        upload(jda, jda::getGuildById, onlyChanged);
     }
 
     /**
      * Uploads via the ready shards. Guilds are looked up across all shards
      * @param manager the {@link ShardManager} with all shards ready
+     * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
      */
-    public static void uploadInteractionCommands(ShardManager manager) {
+    public static void uploadInteractionCommands(ShardManager manager, boolean onlyChanged) {
         // Global commands are application wide, any shard can register them
-        upload(manager.getShards().get(0), manager::getGuildById);
+        upload(manager.getShards().get(0), manager::getGuildById, onlyChanged);
     }
 
-    private static void upload(JDA jda, Function<String, Guild> guilds) {
+    private static void upload(JDA jda, Function<String, Guild> guilds, boolean onlyChanged) {
         Map<String, List<CommandData>> commands = buildCommands();
 
         List<CommandData> global = commands.remove("GLOBAL");
         if (global != null) {
-            LOGGER.info("Registering {} global commands...", global.size());
-            jda.updateCommands().addCommands(global).queue(
-                    r -> LOGGER.info("Successfully registered {} global commands!", global.size()),
-                    e -> LOGGER.error("Failed to register global commands!", e));
+            push("global", global, jda.updateCommands(), jda.retrieveCommands(true), onlyChanged);
         }
 
         for (Map.Entry<String, List<CommandData>> entry : commands.entrySet()) {
@@ -60,19 +71,59 @@ public class CommandUploadBuilder {
                 LOGGER.warn("Guild with ID {} not found! Skipping command registration for this guild.", guildId);
                 continue;
             }
-            List<CommandData> guildCommands = entry.getValue();
-
-            LOGGER.info("Registering {} commands for guild {}...", guildCommands.size(), guildId);
-            guild.updateCommands().addCommands(guildCommands).queue(
-                    r -> LOGGER.info("Successfully registered {} commands for guild {}!", guildCommands.size(), guildId),
-                    e -> LOGGER.error("Failed to register commands for guild {}!", guildId, e));
+            push("guild " + guildId, entry.getValue(), guild.updateCommands(), guild.retrieveCommands(true), onlyChanged);
         }
+    }
+
+    private static void push(String target, List<CommandData> local, CommandListUpdateAction update,
+                             RestAction<List<Command>> registered, boolean onlyChanged) {
+        if (!onlyChanged) {
+            send(target, local, update);
+            return;
+        }
+        registered.queue(remote -> {
+            List<CommandData> remoteData = remote.stream().map(CommandData::fromCommand).collect(Collectors.toList());
+            if (isUpToDate(remoteData, local)) {
+                LOGGER.info("Commands for {} are up to date, skipping upload", target);
+            } else {
+                send(target, local, update);
+            }
+        }, e -> LOGGER.error("Failed to retrieve registered commands for {}!", target, e));
+    }
+
+    private static void send(String target, List<CommandData> local, CommandListUpdateAction update) {
+        LOGGER.info("Registering {} commands for {}...", local.size(), target);
+        update.addCommands(local).queue(
+                r -> LOGGER.info("Successfully registered {} commands for {}!", local.size(), target),
+                e -> LOGGER.error("Failed to register commands for {}!", target, e));
+    }
+
+    /**
+     * Compares the serialized commands, independent of command and field order
+     * @return true if both lists describe the same commands
+     */
+    static boolean isUpToDate(List<CommandData> registered, List<CommandData> local) {
+        if (registered.size() != local.size()) {
+            return false;
+        }
+        List<JSONObject> remaining = registered.stream().map(CommandUploadBuilder::toJson).collect(Collectors.toList());
+        for (CommandData data : local) {
+            JSONObject json = toJson(data);
+            if (!remaining.removeIf(json::similar)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static JSONObject toJson(CommandData data) {
+        return new JSONObject(data.toData().toString());
     }
 
     public static Map<String, List<CommandData>> buildCommands() {
         Map<String, List<CommandData>> commands = new HashMap<>();
 
-        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+        try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getClassesWithAnnotation(SlashCommand.class);
             for (ClassInfo info : classes) {
                 Class<?> workerClass = info.loadClass();
@@ -182,6 +233,9 @@ public class CommandUploadBuilder {
             for (OptionChoice choice : option.choices()) {
                 data.addChoice(choice.name(), choice.value());
             }
+
+            if (option.autoComplete())
+                data.setAutoComplete(true);
 
             optionData.add(data);
         }

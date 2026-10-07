@@ -44,14 +44,14 @@ public class JDAUtil extends BaseUtil {
         JDA.addEventListener(new ListenerAdapter() {
             @Override
             public void onReady(ReadyEvent event) {
-                startCommandLine();
+                JDAUtil.this.onReady();
             }
         });
     }
 
     @Override
-    void uploadCommands() {
-        CommandUploadBuilder.uploadInteractionCommands(JDA);
+    void uploadCommands(final boolean onlyChanged) {
+        CommandUploadBuilder.uploadInteractionCommands(JDA, onlyChanged);
     }
 
     /**

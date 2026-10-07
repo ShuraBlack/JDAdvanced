@@ -4,6 +4,7 @@ import de.shurablack.core.event.handler.EventHandler;
 import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
+import de.shurablack.core.util.ClassScan;
 import de.shurablack.core.util.Config;
 import de.shurablack.core.util.LocalData;
 import net.dv8tion.jda.api.JDABuilder;
@@ -54,6 +55,16 @@ public class UtilBuilder {
 
     /** {@link JDAUtil} which gets build */
     private final JDAUtil JDAUtil;
+
+    /**
+     * Same as {@link #init()}, but restricts the classpath scans (event workers, cron tasks, commands)
+     * to the given packages. Scanning only your own packages speeds up the startup
+     * @param basePackages the packages of your bot, e.g. "de.mybot"
+     */
+    public static void init(final String... basePackages) {
+        ClassScan.setPackages(basePackages);
+        init();
+    }
 
     /**
      * This static method initializes the UtilBuilder by loading the configuration properties

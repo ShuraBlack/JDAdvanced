@@ -1,6 +1,7 @@
 package de.shurablack.listener;
 
 import de.shurablack.core.event.handler.EventHandler;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
@@ -60,18 +61,24 @@ public class DefaultSlashReceiver extends ListenerAdapter {
     public void onMessageContextInteraction(@NotNull MessageContextInteractionEvent event) {
         if (event.isFromGuild()) {
             handler.onGuildMessageContextEvent(event.getName(), event);
+            return;
         }
 
         handler.onGlobalMessageContextEvent(event.getName(), event);
     }
 
     @Override
+    public void onCommandAutoCompleteInteraction(@NotNull CommandAutoCompleteInteractionEvent event) {
+        handler.onAutoCompleteEvent(event.getName(), event);
+    }
+
+    @Override
     public void onEntitySelectInteraction(EntitySelectInteractionEvent event) {
-        handler.onEntitySelectionMenuEvent(event.getId(), event);
+        handler.onEntitySelectionMenuEvent(event.getComponentId(), event);
     }
 
     @Override
     public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
-        handler.onStringSelectionMenuEvent(event.getId(), event);
+        handler.onStringSelectionMenuEvent(event.getComponentId(), event);
     }
 }

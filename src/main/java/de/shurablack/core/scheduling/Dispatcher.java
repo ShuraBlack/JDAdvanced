@@ -3,7 +3,7 @@ package de.shurablack.core.scheduling;
 import de.shurablack.core.scheduling.annotation.Schedule;
 import de.shurablack.core.scheduling.annotation.ScheduleClass;
 import de.shurablack.core.util.Config;
-import io.github.classgraph.ClassGraph;
+import de.shurablack.core.util.ClassScan;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
@@ -114,7 +114,7 @@ public class Dispatcher {
     }
 
     public static void discoverCronTasks() {
-        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+        try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getClassesWithAnnotation(ScheduleClass.class);
 
             for (ClassInfo info : classes) {

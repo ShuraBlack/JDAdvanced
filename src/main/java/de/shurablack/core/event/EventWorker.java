@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
@@ -252,6 +253,23 @@ public abstract class EventWorker {
      * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGuildMessageContextEvent(final Member member, final MessageChannelUnion channel, final String compID, final MessageContextInteractionEvent event) {
+        throw new ImplementationException(MSG);
+    }
+
+    /**
+     * <p>
+     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link CommandAutoCompleteInteractionEvent}
+     * while a user types into an option with enabled auto complete. The identifier is the command name.
+     * <br><br>
+     * Reply with {@link CommandAutoCompleteInteractionEvent#replyChoices} (max. 25 choices) within 3 seconds.
+     * The choices are only suggestions, validate the submitted value in the slash command itself
+     * </p>
+     * @param user is an independent discord user object, which types into the option
+     * @param channel is where the {@link CommandAutoCompleteInteractionEvent Event} got called
+     * @param option is the name of the focused option
+     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     */
+    public void processAutoCompleteEvent(final User user, final MessageChannelUnion channel, final String option, final CommandAutoCompleteInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 }

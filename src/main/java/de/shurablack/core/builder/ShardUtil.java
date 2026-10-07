@@ -56,15 +56,15 @@ public class ShardUtil extends BaseUtil {
                 final int ready = readyShards.incrementAndGet();
                 LOGGER.info("Shard [{}/{}] is ready", event.getJDA().getShardInfo().getShardId()+1, SHARD_MANAGER.getShardsTotal());
                 if (ready == SHARD_MANAGER.getShardsTotal()) {
-                    startCommandLine();
+                    ShardUtil.this.onReady();
                 }
             }
         });
     }
 
     @Override
-    void uploadCommands() {
-        CommandUploadBuilder.uploadInteractionCommands(SHARD_MANAGER);
+    void uploadCommands(final boolean onlyChanged) {
+        CommandUploadBuilder.uploadInteractionCommands(SHARD_MANAGER, onlyChanged);
     }
 
     /**

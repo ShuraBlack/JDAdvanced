@@ -41,12 +41,12 @@ public class DefaultInteractionReceiver extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
-        handler.onButtonEvent(event.getId(), event);
+        handler.onButtonEvent(event.getComponentId(), event);
     }
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
-        handler.onStringSelectionMenuEvent(event.getId(), event);
+        handler.onStringSelectionMenuEvent(event.getComponentId(), event);
     }
 
 }

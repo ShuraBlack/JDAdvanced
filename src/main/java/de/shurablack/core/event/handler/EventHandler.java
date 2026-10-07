@@ -5,6 +5,7 @@ import de.shurablack.core.event.interaction.Type;
 import de.shurablack.core.event.validation.ValidationEvent;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
@@ -75,6 +76,15 @@ public abstract class EventHandler {
     public abstract void onGuildMessageContextEvent(final String identifier, final MessageContextInteractionEvent event);
 
     public abstract void onGlobalMessageContextEvent(final String identifier, final MessageContextInteractionEvent event);
+
+    /**
+     * Handles the auto complete event of a slash command option.
+     * The default implementation ignores it
+     * @param identifier is the name of the command
+     * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     *              of the {@link net.dv8tion.jda.api.JDA JDA}
+     */
+    public void onAutoCompleteEvent(final String identifier, final CommandAutoCompleteInteractionEvent event) { }
 
     public abstract ValidationEvent getEventWorker(final String identifier, final Type type, final User user, final String channelId);
 

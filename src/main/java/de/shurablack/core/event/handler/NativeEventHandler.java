@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
@@ -345,7 +346,7 @@ public class NativeEventHandler extends EventHandler {
      */
     @Override
     public void onEntitySelectionMenuEvent(final String identifier, EntitySelectInteractionEvent event) {
-        final ValidationEvent e = isValid(identifier, Type.STRING_SELECTION, event.getUser(), event.getChannel().getId());
+        final ValidationEvent e = isValid(identifier, Type.ENTITY_SELECTION, event.getUser(), event.getChannel().getId());
 
         if (e.isSuccess()) {
             e.getEvent().getWorker().processEntitySelectEvent(event.getMember(),event.getChannel()
@@ -426,6 +427,23 @@ public class NativeEventHandler extends EventHandler {
             e.getEvent().getWorker().processGlobalMessageContextEvent(event.getUser(), event.getChannel()
                     , event.getName(), event);
         }
+    }
+
+    /**
+     * Handles the auto complete event. There are no cooldowns or error embeds, because discord fires it
+     * on every keystroke and only accepts choices as reply
+     * @param identifier is the name of the command
+     * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     *              of the {@link net.dv8tion.jda.api.JDA JDA}
+     */
+    @Override
+    public void onAutoCompleteEvent(final String identifier, final CommandAutoCompleteInteractionEvent event) {
+        final Event e = this.events.get(Type.AUTO_COMPLETE).get(identifier);
+        if (e == null || !e.isAllowedChannel(event.getChannel().getId())) {
+            event.replyChoices().queue();
+            return;
+        }
+        e.getWorker().processAutoCompleteEvent(event.getUser(), event.getChannel(), event.getFocusedOption().getName(), event);
     }
 
     /**

@@ -2,6 +2,7 @@ package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
+import de.shurablack.core.util.Config;
 import de.shurablack.core.util.FileBanner;
 import de.shurablack.core.util.LocalData;
 import de.shurablack.monitoring.VM;
@@ -46,7 +47,7 @@ public abstract class BaseUtil {
     /** Guards the shutdown, so the exit command and the shutdown hook only run it once */
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    /** Guards the command line, so a repeated ready event doesnt start a second console */
+    /** Guards {@link #onReady()}, so a repeated ready event doesnt start a second console */
     private final AtomicBoolean commandLineStarted = new AtomicBoolean(false);
 
     /**
@@ -59,8 +60,9 @@ public abstract class BaseUtil {
 
     /**
      * Uploads all interaction commands to discord
+     * @param onlyChanged true to skip commands which are already registered unchanged
      */
-    abstract void uploadCommands();
+    abstract void uploadCommands(boolean onlyChanged);
 
     /**
      * Adds a {@link CommandAction} object to the commandActions list and make it available
@@ -106,12 +108,17 @@ public abstract class BaseUtil {
     }
 
     /**
-     * Starts a new thread that reads commands from the
+     * Called once the bot is ready. Uploads the commands if "commands.auto-upload" is enabled in the config
+     * and starts a new thread that reads commands from the
      * command-line interface and invokes the corresponding CommandAction objects.
      */
-    void startCommandLine() {
+    void onReady() {
         if (!commandLineStarted.compareAndSet(false, true)) {
             return;
+        }
+        if (Boolean.parseBoolean(Config.getConfig("commands.auto-upload"))) {
+            LOGGER.info("Auto upload of changed commands ...");
+            uploadCommands(true);
         }
         addAction(new CommandAction(
                 "force cron",
@@ -137,11 +144,10 @@ public abstract class BaseUtil {
         ));
         addAction(new CommandAction(
                 "upload",
-                "Uploads all interaction commands",
+                "[force] Uploads changed interaction commands, force uploads all",
                 input -> {
                     LOGGER.info("Uploading commands ...");
-                    uploadCommands();
-                    LOGGER.info("Commands uploaded");
+                    uploadCommands(!input.endsWith(" force"));
                 }
         ));
         addAction(new CommandAction(

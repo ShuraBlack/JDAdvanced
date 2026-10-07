@@ -2,9 +2,9 @@ package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
 import de.shurablack.core.event.annotation.*;
+import de.shurablack.core.util.ClassScan;
 import de.shurablack.core.util.FileUtil;
 import de.shurablack.core.util.LocalData;
-import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
@@ -142,7 +142,7 @@ public class InteractionSet {
         final Logger logger = LoggerFactory.getLogger(InteractionSet.class);
         final List<InteractionSet> interactionSets = new ArrayList<>();
 
-        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+        try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getSubclasses(EventWorker.class);
 
             for (ClassInfo info : classes) {

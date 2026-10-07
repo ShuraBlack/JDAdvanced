@@ -23,7 +23,8 @@ public enum Type {
     PRIVATE_REACTION,
     PUBLIC_REACTION,
     ENTITY_SELECTION,
-    STRING_SELECTION;
+    STRING_SELECTION,
+    AUTO_COMPLETE;
 
     public static Type fromFunctionName(String functionName) {
         switch (functionName) {
@@ -39,8 +40,9 @@ public enum Type {
             case "processEntitySelectEvent": return ENTITY_SELECTION;
             case "processGlobalUserContextEvent": return GLOBAL_USER_CONTEXT;
             case "processGuildUserContextEvent": return GUILD_USER_CONTEXT;
-            case "processGlobalMsgContextEvent": return GLOBAL_MSG_CONTEXT;
-            case "processGuildMsgContextEvent": return GUILD_MSG_CONTEXT;
+            case "processGlobalMessageContextEvent": return GLOBAL_MSG_CONTEXT;
+            case "processGuildMessageContextEvent": return GUILD_MSG_CONTEXT;
+            case "processAutoCompleteEvent": return AUTO_COMPLETE;
         };
         return null;
     }

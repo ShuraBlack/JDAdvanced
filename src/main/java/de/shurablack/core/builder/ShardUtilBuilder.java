@@ -47,6 +47,15 @@ public class ShardUtilBuilder {
     private final ShardUtil shardUtil;
 
     /**
+     * Same as {@link #init()}, but restricts the classpath scans to the given packages
+     * @param basePackages the packages of your bot, e.g. "de.mybot"
+     * @see UtilBuilder#init(String...)
+     */
+    public static void init(final String... basePackages) {
+        UtilBuilder.init(basePackages);
+    }
+
+    /**
      * This static method initializes the ShardUtilBuilder by loading the configuration properties
      * from the "config.properties" file and initializing the {@link AssetPool} and {@link de.shurablack.core.util.LocalData} classes
      */
