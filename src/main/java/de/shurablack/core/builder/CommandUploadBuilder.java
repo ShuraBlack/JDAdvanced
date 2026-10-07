@@ -144,7 +144,9 @@ public class CommandUploadBuilder {
                 commands.get(command.guildId()).add(extractContextCommand(command));
             }
         } catch (Exception e) {
-            LOGGER.error("Failed to build slash command configuration!", e);
+            // A partial list would delete the missing commands at discord, so upload nothing
+            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
+            commands.clear();
         }
 
         return commands;
@@ -159,7 +161,11 @@ public class CommandUploadBuilder {
         addLocalizations(data::setNameLocalization, command.localizedNames());
         addLocalizations(data::setDescriptionLocalization, command.localizedDescriptions());
 
+        if (command.subCommands().length > 0 && command.options().length > 0)
+            throw new IllegalArgumentException("Slash command /" + command.name() + " cannot have options and sub commands!");
+
         extractSubCommand(data, command.subCommands());
+        data.addOptions(extractOptionData(command.options()));
 
         if (command.defaultMemberPermissions().length > 0)
             data.setDefaultPermissions(DefaultMemberPermissions.enabledFor(command.defaultMemberPermissions()));

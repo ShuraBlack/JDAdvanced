@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Marks a method as handler of a sub command, e.g. <code>/music play</code>.
+ * Marks a method as handler of a slash command, e.g. <code>/ping</code>, or of a sub command, e.g. <code>/music play</code>.
  * The class gets discovered by {@link de.shurablack.core.event.interaction.InteractionSet#fromAnnotation()}.
  * <br><br>
  * Parameters annotated with {@link Option} receive the option value, all others get injected from the event:
@@ -20,7 +20,10 @@ import java.lang.annotation.Target;
  * {@link net.dv8tion.jda.api.interactions.DiscordLocale DiscordLocale}.
  * </p>
  * <pre>{@code
- * @SubCommandHandler(command = "music", name = "play", userCooldown = 5)
+ * @CommandHandler(command = "ping")
+ * void ping(SlashCommandInteractionEvent event) { ... }
+ *
+ * @CommandHandler(command = "music", sub = "play", userCooldown = 5)
  * void play(Member member, @Option("title") String title) { ... }
  * }</pre>
  *
@@ -30,7 +33,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface SubCommandHandler {
+public @interface CommandHandler {
 
     /**
      * @return the name of the {@link SlashCommand}
@@ -38,9 +41,9 @@ public @interface SubCommandHandler {
     String command();
 
     /**
-     * @return the name of the {@link SubCommand}
+     * @return the name of the {@link SubCommand}, empty for commands without sub commands
      */
-    String name();
+    String sub() default "";
 
     /**
      * @return the cooldown per user in seconds

@@ -3,7 +3,7 @@ package de.shurablack.core.event.interaction;
 import de.shurablack.core.event.EventWorker;
 import de.shurablack.core.event.annotation.*;
 import de.shurablack.core.event.annotation.command.SlashCommand;
-import de.shurablack.core.event.annotation.command.SubCommandHandler;
+import de.shurablack.core.event.annotation.command.CommandHandler;
 import de.shurablack.core.util.ClassScan;
 import de.shurablack.core.util.FileUtil;
 import de.shurablack.core.util.LocalData;
@@ -164,7 +164,7 @@ public class InteractionSet {
             result.getSubclasses(EventWorker.class).forEach(info -> classes.put(info.getName(), info));
             // Internal worker, gets created per handler method
             classes.remove(SlashCommandInvoker.class.getName());
-            result.getClassesWithMethodAnnotation(SubCommandHandler.class).forEach(info -> classes.putIfAbsent(info.getName(), info));
+            result.getClassesWithMethodAnnotation(CommandHandler.class).forEach(info -> classes.putIfAbsent(info.getName(), info));
 
             for (ClassInfo info : classes.values()) {
                 final Class<?> workerClass = info.loadClass();
@@ -183,7 +183,7 @@ public class InteractionSet {
                         interactionSets.add(set);
                     }
                 }
-                interactionSets.addAll(fromSubCommandHandlers(workerClass, instance, declarations, logger));
+                interactionSets.addAll(fromCommandHandlers(workerClass, instance, declarations, logger));
             }
             logger.info("Found {} worker classes", classes.size());
         }
@@ -235,15 +235,15 @@ public class InteractionSet {
     }
 
     /**
-     * Creates one InteractionSet per {@link SubCommandHandler} method, registered as guild and global slash event
-     * with the identifier "command sub", e.g. "music play"
+     * Creates one InteractionSet per {@link CommandHandler} method, registered as guild and global slash event
+     * with the full command name as identifier, e.g. "ping" or "music play"
      * @throws de.shurablack.core.event.ImplementationException if a handler doesnt fit its declaration
      */
-    private static List<InteractionSet> fromSubCommandHandlers(final Class<?> workerClass, final Object instance,
+    private static List<InteractionSet> fromCommandHandlers(final Class<?> workerClass, final Object instance,
                                                                final Map<String, SlashCommand> declarations, final Logger logger) {
         final List<InteractionSet> sets = new ArrayList<>();
         for (Method method : workerClass.getDeclaredMethods()) {
-            final SubCommandHandler handler = method.getAnnotation(SubCommandHandler.class);
+            final CommandHandler handler = method.getAnnotation(CommandHandler.class);
             if (handler == null) {
                 continue;
             }
@@ -254,7 +254,7 @@ public class InteractionSet {
             }
 
             final SlashCommandInvoker invoker = SlashCommandInvoker.create(instance, method, declaration);
-            final String identifier = handler.command() + " " + handler.name();
+            final String identifier = SlashCommandInvoker.commandName(handler);
             final List<Interaction> interactions = new ArrayList<>();
             for (Type type : new Type[]{Type.GUILD_SLASH, Type.GLOBAL_SLASH}) {
                 interactions.add(Interaction.create(type, identifier)

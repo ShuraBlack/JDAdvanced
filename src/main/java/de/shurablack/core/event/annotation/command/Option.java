@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Injects the value of a slash command option into a {@link SubCommandHandler} parameter.
+ * Injects the value of a slash command option into a {@link CommandHandler} parameter.
  * Options which werent provided are null, primitive parameters are only allowed for required options.
  * <br><br>
  * Supported types (option type in brackets):

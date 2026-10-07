@@ -228,8 +228,8 @@ public void processAutoCompleteEvent(final User user, final MessageChannelUnion 
 }
 ```
 
-### Sub Command Handler
-Instead of switching over the sub command name, annotate one method per sub command. Options get converted to the parameter type,
+### Command Handler
+Instead of switching over the sub command name, annotate one method per command or sub command. Options get converted to the parameter type,
 everything else (`SlashCommandInteractionEvent`, `Member`, `User`, `Guild`, `MessageChannelUnion`, `DiscordLocale`) gets injected.
 Options which werent provided are `null`. The class doesnt need to extend `EventWorker` and gets discovered by `InteractionSet.fromAnnotation()`.
 
@@ -242,13 +242,24 @@ Options which werent provided are `null`. The class doesnt need to extend `Event
 })
 public class MusicCommands {
 
-    @SubCommandHandler(command = "music", name = "play", userCooldown = 5)
+    @CommandHandler(command = "music", sub = "play", userCooldown = 5)
     void play(SlashCommandInteractionEvent event, Member member, @Option("title") String title, @Option("volume") Integer volume) {
         event.reply("Playing " + title).queue();
     }
 }
 ```
-Cooldowns, channel restrictions and permissions apply per sub command. The handlers get validated against the `@SlashCommand` declaration on startup:
+Commands without sub commands declare their options directly on `@SlashCommand` (Discord doesnt allow both) and leave out `sub`:
+```java
+@SlashCommand(name = "ping", description = "Pings a user", options = {
+    @CommandOption(type = OptionType.USER, name = "target", description = "Who to ping")
+})
+public class PingCommand {
+
+    @CommandHandler(command = "ping")
+    void ping(SlashCommandInteractionEvent event, @Option("target") User target) { ... }
+}
+```
+Cooldowns, channel restrictions and permissions apply per handler. The handlers get validated against the `@SlashCommand` declaration on startup:
 an unknown option, a type that doesnt fit the option type or a primitive for an optional option throws an `ImplementationException` right away.
 
 ## Localization

@@ -5,8 +5,7 @@ import de.shurablack.core.event.ImplementationException;
 import de.shurablack.core.event.annotation.command.CommandOption;
 import de.shurablack.core.event.annotation.command.Option;
 import de.shurablack.core.event.annotation.command.SlashCommand;
-import de.shurablack.core.event.annotation.command.SubCommand;
-import de.shurablack.core.event.annotation.command.SubCommandHandler;
+import de.shurablack.core.event.annotation.command.CommandHandler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.IMentionable;
 import net.dv8tion.jda.api.entities.Member;
@@ -31,13 +30,12 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
 /**
  * <p>
- * Calls a {@link SubCommandHandler} method. The parameter resolvers are built and validated once on registration,
+ * Calls a {@link CommandHandler} method. The parameter resolvers are built and validated once on registration,
  * so a mismatch between handler and {@link SlashCommand} declaration fails on startup instead of on the first use.
  * <br><br>
  * Its an {@link EventWorker}, so the event handlers apply cooldowns, channel restrictions and permissions as usual.
@@ -109,29 +107,49 @@ final class SlashCommandInvoker extends EventWorker {
     /**
      * Builds the invoker and validates the parameters against the declaration
      * @param target the instance which declares the method
-     * @param method the {@link SubCommandHandler} method
+     * @param method the {@link CommandHandler} method
      * @param declaration the {@link SlashCommand} with the same name, null if it isnt declared via annotation (no validation)
      * @return the invoker
      * @throws ImplementationException if a parameter doesnt fit the declaration or isnt supported
      */
     static SlashCommandInvoker create(final Object target, final Method method, final SlashCommand declaration) {
-        final SubCommandHandler handler = method.getAnnotation(SubCommandHandler.class);
-        final String where = String.format("%s#%s (/%s %s)", method.getDeclaringClass().getName(), method.getName(), handler.command(), handler.name());
-
-        final SubCommand sub = declaration == null ? null : Arrays.stream(declaration.subCommands())
-                .filter(s -> s.name().equals(handler.name())).findFirst()
-                .orElseThrow(() -> new ImplementationException(where + ": sub command isnt declared in @SlashCommand"));
+        final CommandHandler handler = method.getAnnotation(CommandHandler.class);
+        final String where = String.format("%s#%s (/%s)", method.getDeclaringClass().getName(), method.getName(), commandName(handler));
+        final CommandOption[] declared = declaration == null ? null : declaredOptions(handler, declaration, where);
 
         final List<Function<SlashCommandInteractionEvent, Object>> resolvers = new ArrayList<>();
         for (Parameter parameter : method.getParameters()) {
             final Option option = parameter.getAnnotation(Option.class);
             resolvers.add(option == null
                     ? contextResolver(parameter, where)
-                    : optionResolver(parameter, option.value(), sub, where));
+                    : optionResolver(parameter, option.value(), declared, where));
         }
 
         method.setAccessible(true);
         return new SlashCommandInvoker(target, method, resolvers);
+    }
+
+    /**
+     * @return the full command name, e.g. "ping" or "music play"
+     */
+    static String commandName(final CommandHandler handler) {
+        return handler.sub().isEmpty() ? handler.command() : handler.command() + " " + handler.sub();
+    }
+
+    /**
+     * @return the options of the command or of the sub command the handler belongs to
+     */
+    private static CommandOption[] declaredOptions(final CommandHandler handler, final SlashCommand declaration, final String where) {
+        if (handler.sub().isEmpty()) {
+            if (declaration.subCommands().length > 0) {
+                throw new ImplementationException(where + ": the command has sub commands, set sub in @CommandHandler");
+            }
+            return declaration.options();
+        }
+        return Arrays.stream(declaration.subCommands())
+                .filter(s -> s.name().equals(handler.sub())).findFirst()
+                .orElseThrow(() -> new ImplementationException(where + ": sub command isnt declared in @SlashCommand"))
+                .options();
     }
 
     private static Function<SlashCommandInteractionEvent, Object> contextResolver(final Parameter parameter, final String where) {
@@ -144,23 +162,21 @@ final class SlashCommandInvoker extends EventWorker {
     }
 
     private static Function<SlashCommandInteractionEvent, Object> optionResolver(final Parameter parameter, final String name,
-                                                                               final SubCommand sub, final String where) {
+                                                                               final CommandOption[] declared, final String where) {
         final Class<?> type = parameter.getType();
         final Converter converter = CONVERTERS.get(type);
         if (converter == null) {
             throw new ImplementationException(String.format("%s: option '%s' has the unsupported type %s", where, name, type.getSimpleName()));
         }
 
-        if (sub != null) {
-            final Optional<CommandOption> declared = Arrays.stream(sub.options()).filter(o -> o.name().equals(name)).findFirst();
-            if (declared.isEmpty()) {
-                throw new ImplementationException(String.format("%s: option '%s' isnt declared in @SubCommand", where, name));
-            }
-            if (!converter.accepts.contains(declared.get().type())) {
+        if (declared != null) {
+            final CommandOption option = Arrays.stream(declared).filter(o -> o.name().equals(name)).findFirst()
+                    .orElseThrow(() -> new ImplementationException(String.format("%s: option '%s' isnt declared", where, name)));
+            if (!converter.accepts.contains(option.type())) {
                 throw new ImplementationException(String.format("%s: option '%s' is %s, which cant be converted to %s",
-                        where, name, declared.get().type(), type.getSimpleName()));
+                        where, name, option.type(), type.getSimpleName()));
             }
-            if (type.isPrimitive() && !declared.get().required()) {
+            if (type.isPrimitive() && !option.required()) {
                 throw new ImplementationException(String.format("%s: option '%s' is optional and can be null, use a wrapper type (e.g. Integer) instead of %s",
                         where, name, type.getSimpleName()));
             }

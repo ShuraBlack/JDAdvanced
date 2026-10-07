@@ -31,6 +31,8 @@ public @interface SlashCommand {
     LocalizedText[] localizedNames() default {};
     LocalizedText[] localizedDescriptions() default {};
     SubCommand[] subCommands() default {};
+    // Options of a command without sub commands, discord doesnt allow both
+    CommandOption[] options() default {};
     Permission[] defaultMemberPermissions() default {};
     InteractionContextType[] contextTypes() default {InteractionContextType.GUILD, InteractionContextType.BOT_DM};
     IntegrationType[] integrationTypes() default {IntegrationType.GUILD_INSTALL};

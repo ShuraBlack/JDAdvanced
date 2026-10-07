@@ -4,7 +4,7 @@ import de.shurablack.core.event.annotation.command.CommandOption;
 import de.shurablack.core.event.annotation.command.Option;
 import de.shurablack.core.event.annotation.command.SlashCommand;
 import de.shurablack.core.event.annotation.command.SubCommand;
-import de.shurablack.core.event.annotation.command.SubCommandHandler;
+import de.shurablack.core.event.annotation.command.CommandHandler;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 
@@ -20,7 +20,7 @@ public class MusicCommands {
     public static String title;
     public static Integer volume;
 
-    @SubCommandHandler(command = "music", name = "play")
+    @CommandHandler(command = "music", sub = "play")
     void play(Member member, @Option("title") String title, @Option("volume") Integer volume) {
         MusicCommands.member = member;
         MusicCommands.title = title;

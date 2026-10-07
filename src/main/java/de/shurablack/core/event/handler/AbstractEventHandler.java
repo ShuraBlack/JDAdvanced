@@ -201,7 +201,7 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Prefers a {@link de.shurablack.core.event.annotation.command.SubCommandHandler} registration ("music play")
+     * Prefers a {@link de.shurablack.core.event.annotation.command.CommandHandler} registration ("music play")
      * over the registration of the whole command ("music")
      */
     private String slashIdentifier(final Type type, final String identifier, final SlashCommandInteractionEvent event) {
