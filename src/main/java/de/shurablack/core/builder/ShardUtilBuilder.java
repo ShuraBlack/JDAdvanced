@@ -2,13 +2,9 @@ package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
 import de.shurablack.core.event.handler.NativeEventHandler;
-import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
-import de.shurablack.core.util.LocalData;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
@@ -47,12 +43,6 @@ import java.util.function.Consumer;
  */
 public class ShardUtilBuilder {
 
-    /** Class Logger */
-    private static final Logger LOGGER = LoggerFactory.getLogger(ShardUtilBuilder.class);
-
-    /** Flag that indicates whether the {@link Config} has been initialized */
-    private static boolean INIT = false;
-
     /** {@link ShardUtil} which gets build */
     private final ShardUtil shardUtil;
 
@@ -61,11 +51,7 @@ public class ShardUtilBuilder {
      * from the "config.properties" file and initializing the {@link AssetPool} and {@link de.shurablack.core.util.LocalData} classes
      */
     public static void init() {
-        Config.loadConfig();
-        Dispatcher.start();
-        AssetPool.init();
-        LocalData.init();
-        INIT = true;
+        UtilBuilder.init();
     }
 
     /**
@@ -94,9 +80,8 @@ public class ShardUtilBuilder {
      * @return the builder for chaining
      */
     public static ShardUtilBuilder create(final DefaultShardManagerBuilder builder, final EventHandler handler) {
-        if (!INIT) {
-            LOGGER.error("You need to run JDAUtil.init() before creating an JDAUtil object", new InitException());
-            System.exit(1);
+        if (!UtilBuilder.isInitialized()) {
+            throw new InitException("You need to run ShardUtilBuilder.init() before creating an ShardUtil object");
         }
         return new ShardUtilBuilder(new ShardUtil(builder.build(), handler));
     }
@@ -106,7 +91,7 @@ public class ShardUtilBuilder {
      * @param task the specified task
      * @return the builder for chaining
      */
-    public ShardUtilBuilder addOnExit(Consumer<Void> task) {
+    public ShardUtilBuilder addOnExit(Consumer<String> task) {
         this.shardUtil.addExitTask(task);
         return this;
     }

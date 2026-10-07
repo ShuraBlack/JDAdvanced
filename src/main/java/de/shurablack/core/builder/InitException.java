@@ -8,13 +8,17 @@ import net.dv8tion.jda.api.JDABuilder;
  * error with initialization. It is a subclass of RuntimeException, which
  * means that it is an unchecked exception that is not required to be declared or caught in a try-catch block.
  * <br><br>
- * This will prevent the user to create an {@link JDAUtil} object via the {@link UtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)},
- * without calling the {@link UtilBuilder#init()} function.
+ * It is thrown when the {@link UtilBuilder#init()} function fails (e.g. missing config) or when
+ * {@link UtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)} is called without it.
  * </p>
  *
- * @version core-1.0.0
+ * @version core-1.1.0
  * @date 12.06.2023
  * @author ShuraBlack
  */
 public class InitException extends RuntimeException {
+
+    public InitException(final String message) {
+        super(message);
+    }
 }

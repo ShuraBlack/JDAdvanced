@@ -1,5 +1,6 @@
 package de.shurablack.core.util;
 
+import de.shurablack.core.builder.InitException;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -124,8 +125,7 @@ public class LocalData {
         try {
             File folder = new File("properties");
             if (!folder.exists() && !folder.mkdir()) {
-                LOGGER.error("Couldnt create properties folder. Check the permissions!");
-                System.exit(1);
+                throw new InitException("Couldnt create properties folder. Check the permissions!");
             }
             singleFile("properties/category_id.properties", "# Add category with <name>=<category_id>");
             singleFile("properties/channel_id.properties", "# Add channel with <name>=<channel_id>");

@@ -51,10 +51,10 @@ import java.util.stream.Collectors;
  * @date 15.06.2023
  * @author ShuraBlack
  */
-public class DisptachEventHandler extends EventHandler {
+public class DispatchEventHandler extends EventHandler {
 
     /** Class Logger */
-    private static final Logger LOGGER = LoggerFactory.getLogger(DisptachEventHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DispatchEventHandler.class);
 
     /** Indicating whether requests from other bots should be ignored */
     private boolean ignoreBotRequest = true;
@@ -82,8 +82,8 @@ public class DisptachEventHandler extends EventHandler {
      * Creates a new EventHandler object
      * @return the handler for chaining
      */
-    public static DisptachEventHandler createDefault() {
-        final DisptachEventHandler handler = new DisptachEventHandler();
+    public static DispatchEventHandler createDefault() {
+        final DispatchEventHandler handler = new DispatchEventHandler();
         for (Type t : Type.values()) {
             handler.events.put(t, new ConcurrentHashMap<>());
         }
@@ -96,8 +96,8 @@ public class DisptachEventHandler extends EventHandler {
      * @param ignoreBotRequest the ignore flag
      * @return the handler for chaining
      */
-    public static DisptachEventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
-        final DisptachEventHandler handler = createDefault();
+    public static DispatchEventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
+        final DispatchEventHandler handler = createDefault();
         EventHandler.setPREFIX(prefix);
         handler.ignoreBotRequest = ignoreBotRequest;
         handler.errorCallback = errorFeedback;
@@ -111,7 +111,7 @@ public class DisptachEventHandler extends EventHandler {
      * @return the handler for chaining
      */
     @Override
-    public DisptachEventHandler registerEvent(final InteractionSet... set) {
+    public DispatchEventHandler registerEvent(final InteractionSet... set) {
         for (InteractionSet os : set) {
             registerEventSubRoutine(os);
         }
@@ -124,7 +124,7 @@ public class DisptachEventHandler extends EventHandler {
      * @return the handler for chaining
      */
     @Override
-    public DisptachEventHandler registerEvent(final List<InteractionSet> set) {
+    public DispatchEventHandler registerEvent(final List<InteractionSet> set) {
         for (InteractionSet os : set) {
             registerEventSubRoutine(os);
         }

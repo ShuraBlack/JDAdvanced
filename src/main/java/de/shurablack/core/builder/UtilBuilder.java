@@ -70,6 +70,13 @@ public class UtilBuilder {
     }
 
     /**
+     * @return true if {@link #init()} has been called
+     */
+    static boolean isInitialized() {
+        return INIT;
+    }
+
+    /**
      * This is the constructor for the UtilBuilder class
      * @param util the created {@link JDAUtil} object
      */
@@ -96,8 +103,7 @@ public class UtilBuilder {
      */
     public static UtilBuilder create(final JDABuilder builder, final EventHandler handler) {
         if (!INIT) {
-            LOGGER.error("You need to run JDAUtil.init() before creating an JDAUtil object", new InitException());
-            System.exit(1);
+            throw new InitException("You need to run UtilBuilder.init() before creating an JDAUtil object");
         }
         return new UtilBuilder(new JDAUtil(builder.build(), handler));
     }

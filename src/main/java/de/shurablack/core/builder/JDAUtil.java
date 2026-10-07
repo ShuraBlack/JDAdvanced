@@ -1,24 +1,10 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
-import de.shurablack.core.util.FileBanner;
-import de.shurablack.monitoring.VM;
-import de.shurablack.core.scheduling.Dispatcher;
-import de.shurablack.core.util.LocalData;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * <p>
@@ -42,26 +28,10 @@ import java.util.function.Consumer;
  * @date 12.06.2023
  * @author ShuraBlack
  */
-public class JDAUtil {
-
-    /** Class Logger */
-    private static final Logger LOGGER = LoggerFactory.getLogger(JDAUtil.class);
+public class JDAUtil extends BaseUtil {
 
     /** Presents the discord bot */
     private static JDA JDA;
-
-    /** Class to handle events of the discord bot */
-    private final EventHandler handler;
-
-    /** Task which will be executed on exit */
-    private Consumer<String> onExit;
-
-    private volatile boolean gracefullyShutdown = false;
-
-    /**
-     * List of {@link CommandAction} which represeting the available commands
-     */
-    private final List<CommandAction> commandActions = new ArrayList<>();
 
     /**
      * This is the constructor for the JDAUtil class
@@ -69,6 +39,7 @@ public class JDAUtil {
      * @param handler the specified hadler object
      */
     JDAUtil(final JDA jda, final EventHandler handler) {
+        super(handler);
         JDA = jda;
         JDA.addEventListener(new ListenerAdapter() {
             @Override
@@ -76,135 +47,11 @@ public class JDAUtil {
                 startCommandLine();
             }
         });
-        this.handler = handler;
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (gracefullyShutdown) {
-                return;
-            }
-            LOGGER.info("Application gets terminated ...");
-            Dispatcher.shutdownService();
-            if (this.onExit != null) {
-                onExit.accept("");
-            }
-        }));
     }
 
-    /**
-     * Adds a {@link CommandAction} object to the commandActions list and make it available
-     * @param action that should be added
-     */
-    void addAction(final CommandAction action) {
-        this.commandActions.add(action);
-    }
-
-    /**
-     * Adds an shutdown task, which will be executed on calling the exit command in the terminal
-     * @param task the specified task
-     */
-    void addExitTask(final Consumer<String> task) {
-        this.onExit = task;
-    }
-
-    /**
-     * Takes a string representing a command, and it returns an Optional<CommandAction> object
-     * containing the CommandAction object for the given command if it exists,
-     * or an empty Optional if the command does not exist.
-     * @param input the command line input
-     * @return Optional with {@link CommandAction} or an empty Optional
-     */
-    private Optional<CommandAction> findCommand(final String input) {
-        return commandActions.stream().filter(command -> input.startsWith(command.getName())).findAny();
-    }
-
-    /**
-     * Starts a new thread that reads commands from the
-     * command-line interface and invokes the corresponding CommandAction objects.
-     */
-    void startCommandLine() {
-        addAction(new CommandAction(
-                "force cron",
-                "<name> Forces a cron task with given name",
-                input -> {
-                    final String[] split = input.split(" ");
-                    if (split.length < 3) {
-                        LOGGER.error("Invalid input: force cron <name>");
-                        return;
-                    }
-                    Dispatcher.forceCronTask(split[2]);
-                }
-        ));
-        addAction(new CommandAction(
-                "reload local",
-                "Reloads the LocalData",
-                input -> {
-                    LOGGER.info("Reloading LocalData ...");
-                    LocalData.clear();
-                    LocalData.init();
-                    LOGGER.info("LocalData reloaded");
-                }
-        ));
-        addAction(new CommandAction(
-                "upload",
-                "Uploads all interaction commands",
-                input -> {
-                    LOGGER.info("Uploading commands ...");
-                    CommandUploadBuilder.uploadInteractionCommands(JDA);
-                    LOGGER.info("Commands uploaded");
-                }
-        ));
-        addAction(new CommandAction(
-                "performance",
-                "Shows performance debug (<mem/load>)",
-                input -> {
-                    final String[] args = input.split(" ");
-                    if (args.length < 2) {
-                        LOGGER.error("Invalid input: performance <mem/load>");
-                        return;
-                    }
-                    if (args[1].equals("mem")) {
-                        LOGGER.info("\n{}", VM.getMemoryUsage());
-                    } else if (args[1].equals("load")) {
-                        LOGGER.info("\n{}", VM.getProcessLoad());
-                    } else {
-                        LOGGER.error("Invalid input: performance <mem/load>");
-                    }
-                }
-        ));
-        addAction(new CommandAction(
-                "dispatcher",
-                "Shows dispatcher debug",
-                input -> Dispatcher.logStatus()
-        ));
-        addAction(new CommandAction(
-                "exit",
-                "Closes the Application",
-                input -> {
-                    gracefullyShutdown = true;
-                    LOGGER.info("Application gets terminated ...");
-                    Dispatcher.shutdownService();
-                    if (this.onExit != null) {
-                        onExit.accept(input);
-                    }
-                    System.exit(0);
-                }
-        ));
-        new Thread(() -> {
-            String line;
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-
-            try {
-                new FileBanner("/internal/banner.txt", commandActions).print(System.out);
-
-                while ((line = reader.readLine()) != null) {
-                    Optional<CommandAction> action = findCommand(line);
-                    final String input = line;
-                    action.ifPresent(entry -> entry.getConsumer().accept(input));
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }, "Console_Thread").start();
+    @Override
+    void uploadCommands() {
+        CommandUploadBuilder.uploadInteractionCommands(JDA);
     }
 
     /**
@@ -212,12 +59,5 @@ public class JDAUtil {
      */
     public static JDA getJDA() {
         return JDA;
-    }
-
-    /**
-     * @return the EventHandler object
-     */
-    public EventHandler getHandler() {
-        return handler;
     }
 }

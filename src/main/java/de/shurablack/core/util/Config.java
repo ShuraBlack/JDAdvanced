@@ -1,5 +1,6 @@
 package de.shurablack.core.util;
 
+import de.shurablack.core.builder.InitException;
 import de.shurablack.core.builder.UtilBuilder;
 
 import java.io.File;
@@ -89,20 +90,18 @@ public class Config {
     /**
      * Loads the configuration properties from a file named "config.properties" in the current directory.
      * <br><br>
-     * If this file does not exist, the method will log an error message and terminate the program
+     * @throws InitException if the file or the access_token is missing
      */
     public static void loadConfig() {
         final File file = new File("config.properties");
         if (!file.exists()) {
-            ServerUtil.GLOBAL_LOGGER.error("JDAUtils misses the <\u001b[32;1mconfig.properties\u001b[0m> file and will be terminated");
-            System.exit(1);
+            throw new InitException("JDAdvanced misses the config.properties file");
         }
 
         CONFIGS = FileUtil.loadProperties("config.properties");
 
         if (!CONFIGS.containsKey("access_token")) {
-            ServerUtil.GLOBAL_LOGGER.error("The <\u001b[32;1mconfig.properties\u001b[0m> misses an discord access_token and will be terminated");
-            System.exit(1);
+            throw new InitException("The config.properties misses a discord access_token");
         }
     }
 }
