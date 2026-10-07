@@ -3,7 +3,11 @@ package de.shurablack.core.event;
 import de.shurablack.core.event.interaction.Interaction;
 import de.shurablack.core.event.interaction.InteractionSet;
 
+import net.dv8tion.jda.api.Permission;
+
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -37,6 +41,9 @@ public class Event {
     /** If true, the event will bypass guild validity checks (only for GUILD events) */
     private final boolean bypassGuildValidity;
 
+    /** Permissions a member needs to trigger the event */
+    private final Set<Permission> requiredPermissions;
+
     /**
      * This is the constructor for the Event class
      * @param worker the instance of an {@link EventWorker}
@@ -46,11 +53,26 @@ public class Event {
      */
     public Event(final EventWorker worker, final long globalCooldown
             , final long userCooldown, final List<String> channelRestriction, final boolean bypassGuildValidity) {
+        this(worker, globalCooldown, userCooldown, channelRestriction, bypassGuildValidity, Collections.emptySet());
+    }
+
+    /**
+     * This is the constructor for the Event class
+     * @param worker the instance of an {@link EventWorker}
+     * @param globalCooldown the global cooldown of the event
+     * @param userCooldown the user cooldwn of the event
+     * @param channelRestriction the channel restriction of the event
+     * @param bypassGuildValidity whether the channel restriction and admin bypass are skipped
+     * @param requiredPermissions the permissions a member needs to trigger the event
+     */
+    public Event(final EventWorker worker, final long globalCooldown, final long userCooldown, final List<String> channelRestriction,
+                 final boolean bypassGuildValidity, final Set<Permission> requiredPermissions) {
         this.worker = worker;
         this.globalCooldown = globalCooldown;
         this.userCooldown = userCooldown;
         this.channelRestriction = channelRestriction;
         this.bypassGuildValidity = bypassGuildValidity;
+        this.requiredPermissions = requiredPermissions;
     }
 
     /**
@@ -79,6 +101,13 @@ public class Event {
      */
     public boolean isBypassGuildValidity() {
         return bypassGuildValidity;
+    }
+
+    /**
+     * @return the permissions a member needs to trigger the event, empty if there are none
+     */
+    public Set<Permission> getRequiredPermissions() {
+        return requiredPermissions;
     }
 
     /**

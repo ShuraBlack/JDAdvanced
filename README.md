@@ -137,6 +137,7 @@ Alternatively you can use a JSON file to declare your InteractionSets
       "identifier": "identifier",
       "globalCooldown": 1000,
       "userCooldown": 1000,
+      "requiredPermissions": ["MESSAGE_MANAGE"],
       "format": "BUTTON",
       "channelRestriction": [
         "channelID",
@@ -164,6 +165,16 @@ or use the new annotation style to annotate your EventWorker class.
 This will automatically register the EventWorker and all its interactions.
 ```java
 List<InteractionSet> list = InteractionSet.fromAnnotation();
+```
+
+Cooldowns (in seconds), channel restrictions and required permissions can be set per process.
+Permissions are checked in the channel of the event (channel overrides count) and deny the event outside of guilds.
+```java
+@EventProcess(identifier = "ban", userCooldown = 5, requiredPermissions = Permission.BAN_MEMBERS)
+@Override
+public void processGuildSlashEvent(final Member member, final MessageChannelUnion channel, final String name, final SlashCommandInteractionEvent event) {
+    // Only reached by members with the ban permission
+}
 ```
 
 

@@ -9,6 +9,7 @@ import de.shurablack.core.event.validation.ValidationEvent;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
@@ -27,6 +28,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -127,7 +129,8 @@ public abstract class AbstractEventHandler extends EventHandler {
                     o.getGlobalCooldown(),
                     o.getUserCooldown(),
                     o.getChannelRestriction(),
-                    o.isBypassGuildValidity()
+                    o.isBypassGuildValidity(),
+                    o.getRequiredPermissions()
             );
             this.events.get(o.getType()).put(o.getIdentifier(), event);
         }
@@ -337,6 +340,11 @@ public abstract class AbstractEventHandler extends EventHandler {
             return ValidationEvent.fail(Validation.NO_EVENT);
         }
 
+        // Outside of guilds there are no permissions to check
+        if (!e.getRequiredPermissions().isEmpty()) {
+            return ValidationEvent.fail(Validation.NO_PERMISSION);
+        }
+
         if (!e.isAllowedChannel(channelID)) {
             return ValidationEvent.fail(Validation.WRONG_CHANNEL);
         }
@@ -351,6 +359,7 @@ public abstract class AbstractEventHandler extends EventHandler {
      * Checks if the call is valid or not.<br>
      * <ul>
      *     <li>Existing Event</li>
+     *     <li>Required permissions</li>
      *     <li>Admin bypass or allowed channel (skipped for {@link de.shurablack.core.event.annotation.BypassGuildValidity})</li>
      *     <li>Isnt on cooldown</li>
      * </ul>
@@ -370,6 +379,11 @@ public abstract class AbstractEventHandler extends EventHandler {
             return ValidationEvent.fail(Validation.NO_EVENT);
         }
 
+        // Not affected by the bypasses, administrators have every permission anyway
+        if (!hasPermissions(member, channelID, e.getRequiredPermissions())) {
+            return ValidationEvent.fail(Validation.NO_PERMISSION);
+        }
+
         if (!e.isBypassGuildValidity()) {
             if (adminBypass && member.hasPermission(Permission.ADMINISTRATOR)) {
                 return ValidationEvent.success(e);
@@ -384,5 +398,17 @@ public abstract class AbstractEventHandler extends EventHandler {
             return ValidationEvent.fail(Validation.ON_COOLDOWN);
         }
         return ValidationEvent.success(e);
+    }
+
+    /**
+     * Checks the permissions in the channel of the event (including channel overrides),
+     * falls back to the guild permissions if the channel isnt a guild channel
+     */
+    private static boolean hasPermissions(final Member member, final String channelID, final Set<Permission> permissions) {
+        if (permissions.isEmpty()) {
+            return true;
+        }
+        final GuildChannel channel = member.getGuild().getGuildChannelById(channelID);
+        return channel != null ? member.hasPermission(channel, permissions) : member.hasPermission(permissions);
     }
 }

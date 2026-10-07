@@ -3,7 +3,12 @@ package de.shurablack.core.event.interaction;
 import de.shurablack.core.event.EventWorker;
 import de.shurablack.core.event.handler.EventHandler;
 
+import net.dv8tion.jda.api.Permission;
+
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.List;
 
 /**
@@ -57,6 +62,9 @@ public class Interaction {
      * Restricted channels should only be used in the context of regular messageReceive events.
      */
     private final List<String> channelRestriction = new ArrayList<>();
+
+    /** Permissions a member needs to trigger the interaction */
+    private final Set<Permission> requiredPermissions = EnumSet.noneOf(Permission.class);
 
     /**
      * The global cooldown for the interaction.
@@ -156,6 +164,24 @@ public class Interaction {
     public Interaction setChannelRestriction(final List<String> channelIDs) {
         this.channelRestriction.addAll(channelIDs);
         return this;
+    }
+
+    /**
+     * Sets the permissions a member needs to trigger the interaction. Checked in the channel of the
+     * interaction, so channel overrides count. Outside of guilds (DMs) the interaction gets denied
+     * @param permissions the required permissions
+     * @return the Interaction for chaining
+     */
+    public Interaction setRequiredPermissions(final Permission... permissions) {
+        this.requiredPermissions.addAll(Arrays.asList(permissions));
+        return this;
+    }
+
+    /**
+     * @return the permissions a member needs to trigger the interaction
+     */
+    public Set<Permission> getRequiredPermissions() {
+        return requiredPermissions;
     }
 
     /**

@@ -1,6 +1,7 @@
 package de.shurablack.core.event.annotation;
 
 import de.shurablack.core.event.interaction.Type;
+import net.dv8tion.jda.api.Permission;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -31,4 +32,9 @@ public @interface ExtendedEventProcess {
     int userCooldown() default -1;
     int globalCooldown() default -1;
     String[] restrictedChannel() default {};
+
+    /**
+     * Permissions the member needs in the channel of the event. Denied outside of guilds (DMs)
+     */
+    Permission[] requiredPermissions() default {};
 }

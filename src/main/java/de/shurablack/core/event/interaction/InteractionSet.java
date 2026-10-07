@@ -10,6 +10,7 @@ import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.dv8tion.jda.api.Permission;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -110,6 +111,11 @@ public class InteractionSet {
                             .setGlobalCD(globalCooldown)
                             .setUserCD(userCooldown)
                             .setChannelRestriction(channelRestrictionList);
+                    // Optional, permission names like "MESSAGE_MANAGE"
+                    JSONArray permissions = interaction.optJSONArray("requiredPermissions");
+                    for (int i = 0; permissions != null && i < permissions.length(); i++) {
+                        interactionObject.setRequiredPermissions(Permission.valueOf(permissions.getString(i)));
+                    }
                     interactionsList.add(interactionObject);
                 }
                 InteractionSet interactionSetObject = InteractionSet.create(
@@ -165,7 +171,8 @@ public class InteractionSet {
                         Interaction interactionObject = Interaction.create(extended.type(), extended.identifier())
                                 .setGlobalCD(extended.globalCooldown())
                                 .setUserCD(extended.userCooldown())
-                                .setChannelRestriction(Arrays.asList(extended.restrictedChannel()));
+                                .setChannelRestriction(Arrays.asList(extended.restrictedChannel()))
+                                .setRequiredPermissions(extended.requiredPermissions());
                         interactionsList.add(interactionObject);
                     }
 
@@ -200,8 +207,8 @@ public class InteractionSet {
                     Interaction interactionObject = Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
                             .setGlobalCD(eventProcess.globalCooldown())
                             .setUserCD(eventProcess.userCooldown())
-                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel())
-                            );
+                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()))
+                            .setRequiredPermissions(eventProcess.requiredPermissions());
                     interactionsList.add(interactionObject);
                 }
 
