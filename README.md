@@ -228,6 +228,29 @@ public void processAutoCompleteEvent(final User user, final MessageChannelUnion 
 }
 ```
 
+### Sub Command Handler
+Instead of switching over the sub command name, annotate one method per sub command. Options get converted to the parameter type,
+everything else (`SlashCommandInteractionEvent`, `Member`, `User`, `Guild`, `MessageChannelUnion`, `DiscordLocale`) gets injected.
+Options which werent provided are `null`. The class doesnt need to extend `EventWorker` and gets discovered by `InteractionSet.fromAnnotation()`.
+
+```java
+@SlashCommand(name = "music", description = "Music commands", subCommands = {
+    @SubCommand(name = "play", description = "Plays a song", options = {
+        @CommandOption(type = OptionType.STRING, name = "title", description = "The title", required = true),
+        @CommandOption(type = OptionType.INTEGER, name = "volume", description = "The volume")
+    })
+})
+public class MusicCommands {
+
+    @SubCommandHandler(command = "music", name = "play", userCooldown = 5)
+    void play(SlashCommandInteractionEvent event, Member member, @Option("title") String title, @Option("volume") Integer volume) {
+        event.reply("Playing " + title).queue();
+    }
+}
+```
+Cooldowns, channel restrictions and permissions apply per sub command. The handlers get validated against the `@SlashCommand` declaration on startup:
+an unknown option, a type that doesnt fit the option type or a primitive for an optional option throws an `ImplementationException` right away.
+
 ## Localization
 Load one `.properties` file per language, named after the language (`de.properties`) or a Discord locale tag (`en-US.properties`, `pt-BR.properties`).
 `Language.get(event, "code")` picks the language of the user who triggered the interaction. It falls back key by key: full locale (`en-US`) -> base language (`en`) -> default language.

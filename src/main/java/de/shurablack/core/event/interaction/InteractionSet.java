@@ -2,11 +2,12 @@ package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
 import de.shurablack.core.event.annotation.*;
+import de.shurablack.core.event.annotation.command.SlashCommand;
+import de.shurablack.core.event.annotation.command.SubCommandHandler;
 import de.shurablack.core.util.ClassScan;
 import de.shurablack.core.util.FileUtil;
 import de.shurablack.core.util.LocalData;
 import io.github.classgraph.ClassInfo;
-import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -149,10 +153,21 @@ public class InteractionSet {
         final List<InteractionSet> interactionSets = new ArrayList<>();
 
         try (ScanResult result = ClassScan.scan()) {
-            ClassInfoList classes = result.getSubclasses(EventWorker.class);
+            final Map<String, SlashCommand> declarations = new HashMap<>();
+            for (ClassInfo info : result.getClassesWithAnnotation(SlashCommand.class)) {
+                final SlashCommand command = info.loadClass().getAnnotation(SlashCommand.class);
+                declarations.put(command.name(), command);
+            }
 
-            for (ClassInfo info : classes) {
-                Class<?> workerClass = info.loadClass();
+            // One instance per class, even if it has worker methods and sub command handlers
+            final Map<String, ClassInfo> classes = new LinkedHashMap<>();
+            result.getSubclasses(EventWorker.class).forEach(info -> classes.put(info.getName(), info));
+            // Internal worker, gets created per handler method
+            classes.remove(SlashCommandInvoker.class.getName());
+            result.getClassesWithMethodAnnotation(SubCommandHandler.class).forEach(info -> classes.putIfAbsent(info.getName(), info));
+
+            for (ClassInfo info : classes.values()) {
+                final Class<?> workerClass = info.loadClass();
                 if (Modifier.isAbstract(workerClass.getModifiers())) {
                     continue;
                 }
@@ -160,72 +175,97 @@ public class InteractionSet {
                     logger.debug("Worker {} is disabled", workerClass.getName());
                     continue;
                 }
-                EventWorker worker = (EventWorker) workerFactory.apply(workerClass);
+                final Object instance = workerFactory.apply(workerClass);
 
-                List<Interaction> interactionsList = new ArrayList<>();
-
-                if (workerClass.isAnnotationPresent(RedirectedProcess.class)) {
-                    RedirectedProcess redirectedProcess = workerClass.getAnnotation(RedirectedProcess.class);
-
-                    for (ExtendedEventProcess extended : redirectedProcess.value()) {
-                        Interaction interactionObject = Interaction.create(extended.type(), extended.identifier())
-                                .setGlobalCD(extended.globalCooldown())
-                                .setUserCD(extended.userCooldown())
-                                .setChannelRestriction(Arrays.asList(extended.restrictedChannel()))
-                                .setRequiredPermissions(extended.requiredPermissions());
-                        interactionsList.add(interactionObject);
+                if (instance instanceof EventWorker) {
+                    final InteractionSet set = fromWorker(workerClass, (EventWorker) instance, logger);
+                    if (set != null) {
+                        interactionSets.add(set);
                     }
-
-                    if (interactionsList.isEmpty()) {
-                        continue;
-                    }
-                    InteractionSet interactionSetObject =
-                            InteractionSet.create(
-                            worker,
-                            interactionsList.toArray(new Interaction[0])
-                    );
-                    interactionSets.add(interactionSetObject);
-                    continue;
                 }
-
-                for (Method method : workerClass.getDeclaredMethods()) {
-                    if (!method.isAnnotationPresent(EventProcess.class)) {
-                        continue;
-                    }
-                    final Type type = Type.fromFunctionName(method.getName());
-                    if (type == null) {
-                        logger.warn("Method {} in {} has no valid type", method.getName(), workerClass.getName());
-                        continue;
-                    }
-
-                    EventProcess eventProcess = method.getAnnotation(EventProcess.class);
-
-                    if (method.isAnnotationPresent(BypassGuildValidity.class)) {
-                        logger.warn("Method {} in {} is annotated with @BypassGuildValidity!", method.getName(), workerClass.getName());
-                    }
-
-                    Interaction interactionObject = Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
-                            .setGlobalCD(eventProcess.globalCooldown())
-                            .setUserCD(eventProcess.userCooldown())
-                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()))
-                            .setRequiredPermissions(eventProcess.requiredPermissions());
-                    interactionsList.add(interactionObject);
-                }
-
-                if (interactionsList.isEmpty()) {
-                    continue;
-                }
-
-                InteractionSet interactionSetObject = InteractionSet.create(
-                        worker,
-                        interactionsList.toArray(new Interaction[0])
-                );
-                interactionSets.add(interactionSetObject);
+                interactionSets.addAll(fromSubCommandHandlers(workerClass, instance, declarations, logger));
             }
-            logger.info("Found {} EventWorker classes", classes.size());
+            logger.info("Found {} worker classes", classes.size());
         }
 
         return interactionSets;
+    }
+
+    /**
+     * Creates the interactions of the {@link EventProcess} / {@link RedirectedProcess} annotations
+     * @return the InteractionSet or null if the worker has no interactions
+     */
+    private static InteractionSet fromWorker(final Class<?> workerClass, final EventWorker worker, final Logger logger) {
+        final List<Interaction> interactionsList = new ArrayList<>();
+
+        if (workerClass.isAnnotationPresent(RedirectedProcess.class)) {
+            for (ExtendedEventProcess extended : workerClass.getAnnotation(RedirectedProcess.class).value()) {
+                interactionsList.add(Interaction.create(extended.type(), extended.identifier())
+                        .setGlobalCD(extended.globalCooldown())
+                        .setUserCD(extended.userCooldown())
+                        .setChannelRestriction(Arrays.asList(extended.restrictedChannel()))
+                        .setRequiredPermissions(extended.requiredPermissions()));
+            }
+        } else {
+            for (Method method : workerClass.getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(EventProcess.class)) {
+                    continue;
+                }
+                final Type type = Type.fromFunctionName(method.getName());
+                if (type == null) {
+                    logger.warn("Method {} in {} has no valid type", method.getName(), workerClass.getName());
+                    continue;
+                }
+
+                EventProcess eventProcess = method.getAnnotation(EventProcess.class);
+
+                if (method.isAnnotationPresent(BypassGuildValidity.class)) {
+                    logger.warn("Method {} in {} is annotated with @BypassGuildValidity!", method.getName(), workerClass.getName());
+                }
+
+                interactionsList.add(Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
+                        .setGlobalCD(eventProcess.globalCooldown())
+                        .setUserCD(eventProcess.userCooldown())
+                        .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()))
+                        .setRequiredPermissions(eventProcess.requiredPermissions()));
+            }
+        }
+
+        return interactionsList.isEmpty() ? null : InteractionSet.create(worker, interactionsList.toArray(new Interaction[0]));
+    }
+
+    /**
+     * Creates one InteractionSet per {@link SubCommandHandler} method, registered as guild and global slash event
+     * with the identifier "command sub", e.g. "music play"
+     * @throws de.shurablack.core.event.ImplementationException if a handler doesnt fit its declaration
+     */
+    private static List<InteractionSet> fromSubCommandHandlers(final Class<?> workerClass, final Object instance,
+                                                               final Map<String, SlashCommand> declarations, final Logger logger) {
+        final List<InteractionSet> sets = new ArrayList<>();
+        for (Method method : workerClass.getDeclaredMethods()) {
+            final SubCommandHandler handler = method.getAnnotation(SubCommandHandler.class);
+            if (handler == null) {
+                continue;
+            }
+            final SlashCommand declaration = declarations.get(handler.command());
+            if (declaration == null) {
+                logger.warn("/{} isnt declared via @SlashCommand, the options of {}#{} cant be validated",
+                        handler.command(), workerClass.getName(), method.getName());
+            }
+
+            final SlashCommandInvoker invoker = SlashCommandInvoker.create(instance, method, declaration);
+            final String identifier = handler.command() + " " + handler.name();
+            final List<Interaction> interactions = new ArrayList<>();
+            for (Type type : new Type[]{Type.GUILD_SLASH, Type.GLOBAL_SLASH}) {
+                interactions.add(Interaction.create(type, identifier)
+                        .setGlobalCD(handler.globalCooldown())
+                        .setUserCD(handler.userCooldown())
+                        .setChannelRestriction(Arrays.asList(handler.restrictedChannel()))
+                        .setRequiredPermissions(handler.requiredPermissions()));
+            }
+            sets.add(InteractionSet.create(invoker, interactions.toArray(new Interaction[0])));
+        }
+        return sets;
     }
 
     /**

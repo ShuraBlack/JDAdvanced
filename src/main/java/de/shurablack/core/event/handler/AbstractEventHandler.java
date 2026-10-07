@@ -200,15 +200,24 @@ public abstract class AbstractEventHandler extends EventHandler {
                 e -> e.getWorker().processButtonEvent(event.getMember(), event.getChannel(), event.getButton().getCustomId(), event));
     }
 
+    /**
+     * Prefers a {@link de.shurablack.core.event.annotation.command.SubCommandHandler} registration ("music play")
+     * over the registration of the whole command ("music")
+     */
+    private String slashIdentifier(final Type type, final String identifier, final SlashCommandInteractionEvent event) {
+        final String fullName = event.getFullCommandName();
+        return this.events.get(type).containsKey(fullName) ? fullName : identifier;
+    }
+
     @Override
     public void onGlobalSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
-        handle(identifier, Type.GLOBAL_SLASH, event.getUser(), null, event.getChannel().getId(), event,
+        handle(slashIdentifier(Type.GLOBAL_SLASH, identifier, event), Type.GLOBAL_SLASH, event.getUser(), null, event.getChannel().getId(), event,
                 e -> e.getWorker().processGlobalSlashEvent(event.getUser(), event.getChannel().asPrivateChannel(), event.getName(), event));
     }
 
     @Override
     public void onGuildSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
-        handle(identifier, Type.GUILD_SLASH, event.getUser(), event.getMember(), event.getChannel().getId(), event,
+        handle(slashIdentifier(Type.GUILD_SLASH, identifier, event), Type.GUILD_SLASH, event.getUser(), event.getMember(), event.getChannel().getId(), event,
                 e -> e.getWorker().processGuildSlashEvent(event.getMember(), event.getChannel(), event.getSubcommandName(), event));
     }
 
