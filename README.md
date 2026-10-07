@@ -1,6 +1,6 @@
 # JDAdvanced
 JDAvanced is an extension created by fans(me) that enhances the functionality of the popular Java Discord API Wrapper, 
-[JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and database/SQL handling, among others.
+[JDA](https://github.com/discord-jda/JDA). It provides additional features to simplify bot building, event creation, and more.
 > ❗️Disclaimer: As mentioned earlier, this project is solely a "fan-made" creation of mine
 > Please note that not everything may be optimized to the highest standard, but I hope you still enjoy using it.
 
@@ -21,7 +21,6 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - [Log4j API](https://github.com/apache/logging-log4j2) - **2.0.5**
 - [Log4J Simple](https://github.com/apache/logging-log4j2) - **2.0.5**
 - [JCABI-Log](https://github.com/jcabi/jcabi-log) - **0.22.0**
-- [Commons-DBUtils](commons-dbutils) - **1.7**
 - [Cron4J](https://github.com/Takuto88/cron4j) - **2.2.5**
 - [Json](https://github.com/stleary/JSON-java) - **20231013**
 - [Classgraph](https://github.com/classgraph/classgraph) - **4.8.179**
@@ -31,7 +30,6 @@ All dependencies are managed by [Maven](https://maven.apache.org)
 - **core** -> Main classess of the project
 - **listener** -> Default implementation of Listener
 - **mapping** -> Maps multiple Identifiers to one and gives an easier way to interact with commands
-- **sql** -> FluentSQL, SQLRequest & Connectionpool
 - **localization** -> Language and timezone handling
 
 ## Download
@@ -41,7 +39,6 @@ Currently this project only supports [GitHub Realse](https://github.com/ShuraBla
 ## Creating the JDAUtil Object
 To create the JDAUtil object, you can utilize the UtilBuilder. Prior to that, you should create a "config.properties" file in the root folder (development) or next to the **.jar** file (deployment)
 that includes at least a property for the "access_token". Afterward, you can call the init function, which will load the config file, initialize the AssetPool, and LocalData.
-> **HINT:** If you plan to utilize the implemented connection pool, you will also need to specify the "db_url", "db_username", "db_password", and "db_poolsize".
 This builder requires a JDABuilder and an EventHandler object. For more information on building the JDA object, please refer to the [JDA](https://github.com/discord-jda/JDA) documentation.<br>
 
 **Example:**
@@ -61,14 +58,12 @@ final JDAUtil util = UtilBuilder.create(builder, handler).build();
 ```
 
 ### Configuration
-Furthermore, you have the option to add commands to the command line and activate the database connection pool.<br>
+Furthermore, you have the option to add commands to the command line.<br>
 
 **Example:**
 
 ```java
 final JDAUtil util = UtilBuilder.create(builder, handler)
-  // Activates the pool with provided credentials
-  .addDataBase()
   // Adds another commandline action to the console
   .setCommandLineAction(
     new CommandAction("say-hello", "Says 'Hello, World!'", (String args) -> System.out.println("Hello, World!"))

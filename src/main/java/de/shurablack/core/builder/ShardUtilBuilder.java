@@ -5,9 +5,7 @@ import de.shurablack.core.event.handler.NativeEventHandler;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
-import de.shurablack.core.util.ConfigException;
 import de.shurablack.core.util.LocalData;
-import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,45 +108,6 @@ public class ShardUtilBuilder {
      */
     public ShardUtilBuilder addOnExit(Consumer<Void> task) {
         this.shardUtil.addExitTask(task);
-        return this;
-    }
-
-    /**
-     * @Deprecated
-     * This method is deprecated and will be removed in future versions.<br>
-     * The management of database connections should happen separately from the class.
-     * <br><br>
-     * Adds a database connection to the JDAUtil object that is being built by this UtilBuilder.
-     * It uses the configuration properties in "config.properties" to connect to the database
-     * and creates a ConnectionPool object to manage the connections.
-     * @return the builder for chaining
-     */
-    public ShardUtilBuilder addDatabase() {
-        final String url = Config.getConfig("db_url");
-        final String username = Config.getConfig("db_username");
-        final String password = Config.getConfig("db_password");
-        final String size = Config.getConfig("db_poolsize");
-        if (url == null || username == null || password == null) {
-            LOGGER.warn("You need to declare db config properties before adding a database", new ConfigException());
-        }
-
-        try {
-            LOGGER.debug("Register MySQL Driver ...");
-            Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
-        } catch (
-                IllegalArgumentException | ClassNotFoundException | IllegalAccessException | InstantiationException e) {
-            LOGGER.debug("Couldnt register MySQL Driver. Shutting down the Application ...",e);
-            System.exit(1);
-        }
-
-        this.shardUtil.setConnectionPool(
-                new ConnectionPool(
-                        url,
-                        username,
-                        password,
-                        size == null ? 1 : Integer.parseInt(size)
-                )
-        );
         return this;
     }
 

@@ -5,7 +5,6 @@ import de.shurablack.core.util.FileBanner;
 import de.shurablack.monitoring.VM;
 import de.shurablack.core.scheduling.Dispatcher;
 import de.shurablack.core.util.LocalData;
-import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
@@ -54,9 +53,6 @@ public class JDAUtil {
     /** Class to handle events of the discord bot */
     private final EventHandler handler;
 
-    /** Class to manage connections to a database */
-    private ConnectionPool connectionPool;
-
     /** Task which will be executed on exit */
     private Consumer<String> onExit;
 
@@ -92,14 +88,6 @@ public class JDAUtil {
                 onExit.accept("");
             }
         }));
-    }
-
-    /**
-     * Sets the connectionPool field to the given ConnectionPool object
-     * @param pool the specified connection pool
-     */
-    void setConnectionPool(final ConnectionPool pool) {
-        this.connectionPool = pool;
     }
 
     /**
@@ -231,12 +219,5 @@ public class JDAUtil {
      */
     public EventHandler getHandler() {
         return handler;
-    }
-
-    /**
-     * @return the ConnectionPool object
-     */
-    public ConnectionPool getConnectionPool() {
-        return connectionPool;
     }
 }
