@@ -83,7 +83,7 @@ public class InteractionSet {
      * @see DisabledWorker
      * @return the list of InteractionSets
      */
-    private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> workerFactory) {
+    private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> instanceFactory) {
         final Logger logger = LoggerFactory.getLogger(InteractionSet.class);
         final List<InteractionSet> interactionSets = new ArrayList<>();
 
@@ -99,9 +99,17 @@ public class InteractionSet {
             result.getSubclasses(EventWorker.class).forEach(info -> classes.put(info.getName(), info));
             // Internal worker, gets created per handler method
             classes.remove(SlashCommandInvoker.class.getName());
-            result.getClassesWithMethodAnnotation(CommandHandler.class).forEach(info -> classes.putIfAbsent(info.getName(), info));
+            // Only classes declaring handlers themselves, subclasses inheriting them would register a second instance
+            result.getClassesWithMethodAnnotation(CommandHandler.class).stream()
+                    .filter(info -> info.hasDeclaredMethodAnnotation(CommandHandler.class))
+                    .forEach(info -> classes.putIfAbsent(info.getName(), info));
 
             for (ClassInfo info : classes.values()) {
+                // Anonymous classes cant be created by a factory or default constructor. External classes are
+                // superclasses outside of the scanned packages, ClassGraph reports them too
+                if (info.isAnonymousInnerClass() || info.isExternalClass()) {
+                    continue;
+                }
                 final Class<?> workerClass = info.loadClass();
                 if (Modifier.isAbstract(workerClass.getModifiers())) {
                     continue;
@@ -110,7 +118,12 @@ public class InteractionSet {
                     logger.debug("Worker {} is disabled", workerClass.getName());
                     continue;
                 }
-                final Object instance = workerFactory.apply(workerClass);
+                final Object instance = instanceFactory.apply(workerClass);
+                if (instance == null) {
+                    // e.g. a dependency injection container without a bean for this class
+                    logger.debug("No instance for {}, skipped", workerClass.getName());
+                    continue;
+                }
 
                 if (instance instanceof EventWorker) {
                     final InteractionSet set = fromWorker(workerClass, (EventWorker) instance, logger);
@@ -235,11 +248,19 @@ public class InteractionSet {
      * @see RedirectedProcess
      * @see ExtendedEventProcess
      * @see DisabledWorker
-     * @param workerFactory a function that takes a Class object and returns an instance of that class. This is used to create the EventWorker instances instead of using the default constructor.
+     * <br><br>
+     * Spring example, classes without a bean get skipped:
+     * <pre>{@code
+     * InteractionSet.fromAnnotation(cls -> context.getBeanProvider(cls).getIfAvailable());
+     * }</pre>
+     * Proxied beans (e.g. @Transactional) need public {@link CommandHandler} methods, see {@link CommandHandler}.
+     *
+     * @param instanceFactory creates the instance of a discovered class (worker or class with {@link CommandHandler} methods)
+     *                        instead of the default constructor. Returning null skips the class
      * @return the list of InteractionSets
      */
-    public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> workerFactory) {
-        return internalFromAnnotation(workerFactory);
+    public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> instanceFactory) {
+        return internalFromAnnotation(instanceFactory);
     }
 
 }

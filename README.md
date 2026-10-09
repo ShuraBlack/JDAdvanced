@@ -194,7 +194,7 @@ Options which werent provided are `null`. The class doesnt need to extend `Event
 public class MusicCommands {
 
     @CommandHandler(command = "music", sub = "play", userCooldown = 5)
-    void play(SlashCommandInteractionEvent event, Member member, @Option("title") String title, @Option("volume") Integer volume) {
+    public void play(SlashCommandInteractionEvent event, Member member, @Option("title") String title, @Option("volume") Integer volume) {
         event.reply("Playing " + title).queue();
     }
 }
@@ -207,11 +207,21 @@ Commands without sub commands declare their options directly on `@SlashCommand` 
 public class PingCommand {
 
     @CommandHandler(command = "ping")
-    void ping(SlashCommandInteractionEvent event, @Option("target") User target) { ... }
+    public void ping(SlashCommandInteractionEvent event, @Option("target") User target) { ... }
 }
 ```
 Cooldowns, channel restrictions and permissions apply per handler. The handlers get validated against the `@SlashCommand` declaration on startup:
 an unknown option, a type that doesnt fit the option type or a primitive for an optional option throws an `ImplementationException` right away.
+
+### Spring Boot / Dependency Injection
+Pass a factory to `fromAnnotation`, so workers and command handlers are created by your container. Returning `null` skips a class.
+Restrict the scan to your packages, otherwise ClassGraph scans the whole classpath including Spring itself.
+```java
+UtilBuilder.init("de.mybot");
+handler.registerEvent(InteractionSet.fromAnnotation(cls -> context.getBeanProvider(cls).getIfAvailable()));
+```
+Proxied beans (`@Transactional`, `@Async`, ...) need `public` `@CommandHandler` methods, a subclass proxy cant delegate package-private ones.
+The startup fails with a hint if a handler isnt reachable through the proxy.
 
 ## Localization
 Load one `.properties` file per language, named after the language (`de.properties`) or a Discord locale tag (`en-US.properties`, `pt-BR.properties`).

@@ -118,6 +118,8 @@ public class Dispatcher {
             ClassInfoList classes = result.getClassesWithAnnotation(ScheduleClass.class);
 
             for (ClassInfo info : classes) {
+                // Superclasses outside of the scanned packages
+                if (info.isExternalClass()) continue;
                 Class<?> workerClass = info.loadClass();
 
                 for (Method method : workerClass.getDeclaredMethods()) {

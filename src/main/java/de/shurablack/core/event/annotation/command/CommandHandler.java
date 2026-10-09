@@ -21,11 +21,12 @@ import java.lang.annotation.Target;
  * </p>
  * <pre>{@code
  * @CommandHandler(command = "ping")
- * void ping(SlashCommandInteractionEvent event) { ... }
+ * public void ping(SlashCommandInteractionEvent event) { ... }
  *
  * @CommandHandler(command = "music", sub = "play", userCooldown = 5)
- * void play(Member member, @Option("title") String title) { ... }
+ * public void play(Member member, @Option("title") String title) { ... }
  * }</pre>
+ * Make the methods public if the instance can be a proxy (e.g. Spring beans with @Transactional).
  *
  * @version core-1.1.0
  * @date 07.10.2026

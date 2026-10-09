@@ -23,6 +23,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -125,8 +126,25 @@ final class SlashCommandInvoker extends EventWorker {
                     : optionResolver(parameter, option.value(), declared, where));
         }
 
+        checkInstance(target, method, where);
         method.setAccessible(true);
         return new SlashCommandInvoker(target, method, resolvers);
+    }
+
+    /**
+     * Instances from a dependency injection container can be proxies. Interface based proxies arent instances of the class,
+     * and subclass proxies (e.g. Spring CGLIB) dont intercept non-public methods, so those would run on the empty proxy fields
+     */
+    private static void checkInstance(final Object target, final Method method, final String where) {
+        final Class<?> declaring = method.getDeclaringClass();
+        if (!declaring.isInstance(target)) {
+            throw new ImplementationException(String.format("%s: the instance is a %s, not a %s. Interface based proxies arent supported, use class based proxies",
+                    where, target.getClass().getName(), declaring.getName()));
+        }
+        if (target.getClass() != declaring && !Modifier.isPublic(method.getModifiers())) {
+            throw new ImplementationException(String.format("%s: the instance is a proxy (%s), make the method public so the proxy can delegate it",
+                    where, target.getClass().getName()));
+        }
     }
 
     /**

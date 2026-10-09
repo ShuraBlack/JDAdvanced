@@ -126,6 +126,8 @@ public class CommandUploadBuilder {
         try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getClassesWithAnnotation(SlashCommand.class);
             for (ClassInfo info : classes) {
+                // Superclasses outside of the scanned packages
+                if (info.isExternalClass()) continue;
                 Class<?> workerClass = info.loadClass();
 
                 SlashCommand command = workerClass.getAnnotation(SlashCommand.class);
@@ -136,6 +138,8 @@ public class CommandUploadBuilder {
 
             classes = result.getClassesWithAnnotation(ContextCommand.class);
             for (ClassInfo info : classes) {
+                // Superclasses outside of the scanned packages
+                if (info.isExternalClass()) continue;
                 Class<?> workerClass = info.loadClass();
 
                 ContextCommand command = workerClass.getAnnotation(ContextCommand.class);
