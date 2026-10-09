@@ -29,6 +29,24 @@ class LanguageTest {
     }
 
     @Test
+    void discoverLanguagesLoadsOnlyPropertiesFiles(@TempDir Path dir) throws IOException {
+        Files.writeString(dir.resolve("de.properties"), "greet=Hallo");
+        Files.writeString(dir.resolve("en-US.properties"), "greet=Hello");
+        Files.writeString(dir.resolve("README"), "no dot in the name");
+        Files.writeString(dir.resolve("notes.txt"), "other extension");
+        Files.createDirectory(dir.resolve("sub.properties"));
+
+        assertTrue(Language.discoverLanguages(dir.toString()));
+        assertEquals(Set.of("de", "en-US"), Language.getLanguages());
+        assertEquals("Hallo", Language.get("de", "greet"));
+    }
+
+    @Test
+    void discoverLanguagesReturnsFalseForMissingDirectory() {
+        assertFalse(Language.discoverLanguages("does/not/exist"));
+    }
+
+    @Test
     void localeFallsBackToBaseLanguageThenDefaultPerKey(@TempDir Path dir) throws IOException {
         write(dir, "en.properties", "greet=Hello\nbye=Bye\n");
         write(dir, "de.properties", "greet=Hallo\nvalidation.on_cooldown=Bitte warte kurz\n");

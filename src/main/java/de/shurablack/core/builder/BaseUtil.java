@@ -12,9 +12,10 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -47,7 +48,7 @@ public abstract class BaseUtil {
      * The {@link CommandAction}s available on the command-line interface, user actions first,
      * followed by the defaults added in {@link #onReady()}
      */
-    private final List<CommandAction> commandActions = new ArrayList<>();
+    private final List<CommandAction> commandActions = new CopyOnWriteArrayList<>();
 
     /** Task executed on shutdown, null if none was set */
     private volatile Consumer<String> onExit;
@@ -109,13 +110,16 @@ public abstract class BaseUtil {
     }
 
     /**
-     * Finds the action for a command line. An action matches if the line starts with its name,
-     * the first match in registration order wins
+     * Finds the action for a command line. An action matches if the line is its name or starts with its name
+     * followed by a space (the arguments). If several match, e.g. "force" and "force cron", the longest name wins
+     * @param actions the available actions
      * @param input the command line input
      * @return the matching {@link CommandAction}, or an empty Optional if none matches
      */
-    private Optional<CommandAction> findCommand(final String input) {
-        return commandActions.stream().filter(command -> input.startsWith(command.getName())).findAny();
+    static Optional<CommandAction> findCommand(final List<CommandAction> actions, final String input) {
+        return actions.stream()
+                .filter(action -> input.equals(action.getName()) || input.startsWith(action.getName() + " "))
+                .max(Comparator.comparingInt(action -> action.getName().length()));
     }
 
     /**
@@ -202,7 +206,7 @@ public abstract class BaseUtil {
 
                 while ((line = reader.readLine()) != null) {
                     final String input = line;
-                    findCommand(input).ifPresent(entry -> {
+                    findCommand(commandActions, input).ifPresent(entry -> {
                         // A failing command must not kill the console thread
                         try {
                             entry.getConsumer().accept(input);

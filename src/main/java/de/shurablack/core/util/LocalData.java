@@ -245,7 +245,7 @@ public class LocalData {
 
     /**
      * Adds every {@link Category} of the given {@link Guild} whose ID isn't stored yet (name as key)
-     * and saves the category data to "category_id.properties" in the working directory.
+     * and saves the category data to "properties/category_id.properties".
      * @param guild the guild to read from
      * @return false if the guild is null, true otherwise
      */
@@ -260,13 +260,13 @@ public class LocalData {
             }
             CATEGORYIDS.setProperty(category.getName(), category.getId());
         }
-        FileUtil.saveProperties("category_id.properties","# Add category with <name>=<category_id>", CATEGORYIDS);
+        FileUtil.saveProperties("properties/category_id.properties","# Add category with <name>=<category_id>", CATEGORYIDS);
         return true;
     }
 
     /**
      * Adds every {@link GuildChannel} of the given {@link Guild} whose ID isn't stored yet (name as key)
-     * and saves the channel data to "channel_id.properties" in the working directory.
+     * and saves the channel data to "properties/channel_id.properties".
      * This includes hidden channels, but excludes {@link net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel ThreadChannel}s.
      * Channels with the same name overwrite each other.
      * @param guild the guild to read from
@@ -283,13 +283,13 @@ public class LocalData {
             }
             CHANNELIDS.setProperty(channel.getName(), channel.getId());
         }
-        FileUtil.saveProperties("channel_id.properties","# Add channel with <name>=<channel_id>",CHANNELIDS);
+        FileUtil.saveProperties("properties/channel_id.properties","# Add channel with <name>=<channel_id>",CHANNELIDS);
         return true;
     }
 
     /**
      * Adds every custom emoji of the given {@link Guild} whose name isn't stored yet, with its mention
-     * string as value, and saves the emoji data to "emoji_id.properties" in the working directory.
+     * string as value, and saves the emoji data to "properties/emoji_id.properties".
      * @param guild the guild to read from
      * @return false if the guild is null, true otherwise
      */
@@ -304,16 +304,13 @@ public class LocalData {
             }
             EMOJIIDS.setProperty(emoji.getName(), emoji.getAsMention());
         }
-        FileUtil.saveProperties("emoji_id.properties","# Add emoji with <name>=<emoji_id>", EMOJIIDS);
+        FileUtil.saveProperties("properties/emoji_id.properties","# Add emoji with <name>=<emoji_id>", EMOJIIDS);
         return true;
     }
 
     /**
      * Adds every {@link Role} of the given {@link Guild} whose name isn't stored yet (name as key, ID as value)
-     * and saves the data to "role_id.properties" in the working directory.
-     * <br><br>
-     * Note: the current implementation stores the roles in the emoji data, not the role data, so
-     * {@link #getRoleID(String)} doesn't see them and the saved file contains the emoji entries as well.
+     * and saves the role data to "properties/role_id.properties".
      * @param guild the guild to read from
      * @return false if the guild is null, true otherwise
      */
@@ -323,12 +320,12 @@ public class LocalData {
         }
 
         for (Role role : guild.getRoles()) {
-            if (EMOJIIDS.containsKey(role.getName())) {
+            if (ROLEIDS.containsKey(role.getName())) {
                 continue;
             }
-            EMOJIIDS.setProperty(role.getName(), role.getId());
+            ROLEIDS.setProperty(role.getName(), role.getId());
         }
-        FileUtil.saveProperties("role_id.properties","# Add role with <name>=<role_id>", EMOJIIDS);
+        FileUtil.saveProperties("properties/role_id.properties","# Add role with <name>=<role_id>", ROLEIDS);
         return true;
     }
 

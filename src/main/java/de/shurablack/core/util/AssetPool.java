@@ -45,9 +45,9 @@ public class AssetPool {
     /**
      * Initializes the pool from the "assets.properties" file.
      * <br><br>
-     * Entries with a key starting with "url" are stored as strings, entries starting with "img" are loaded
-     * as images (failures are logged and skipped), all other keys are ignored. If the file doesn't exist,
-     * it gets created with a comment header instead.
+     * Entries with a key starting with "url" are stored as strings, entries starting with "img" or "file" are loaded
+     * as images from a local path (failures are logged and skipped), all other keys are ignored. If the file doesn't
+     * exist, it gets created with a comment header instead.
      */
     public static void init() {
         final File file = new File(ASSETS_FILE);
@@ -56,24 +56,14 @@ public class AssetPool {
             for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                 if (((String) entry.getKey()).startsWith("url")) {
                     ASSETS.put((String) entry.getKey(), (String) entry.getValue());
-                } else if (((String) entry.getKey()).startsWith("img")) {
-                    final File reference = new File((String) entry.getValue());
-                    if (!file.exists()) {
-                        LOGGER.info(String.format("Couldnt find file <%s>", entry.getValue()));
-                        continue;
-                    }
-                    try {
-                        final BufferedImage image = ImageIO.read(reference);
-                        IMAGE_ASSETS.put((String) entry.getKey(), image);
-                    } catch (IOException e) {
-                        LOGGER.error(String.format("Couldnt load image <%s>", entry.getValue()));
-                    }
+                } else if (isImage((String) entry.getKey())) {
+                    loadImage((String) entry.getKey(), (String) entry.getValue());
                 }
             }
             return;
         }
         try (final OutputStream out = new FileOutputStream(file)) {
-            final String msg = "# Add channel with <url_name/file_name>=<source>\n" +
+            final String msg = "# Add assets with <url_name/img_name>=<source>\n" +
                     "# The source can be a path or link to an image";
             out.write(msg.getBytes());
             out.flush();
@@ -102,32 +92,54 @@ public class AssetPool {
     /**
      * Adds an asset to the pool.
      * <br><br>
-     * Names starting with "file" are loaded as image from the local path {@code source}, names starting
-     * with "url" are stored as string. Note that, unlike {@link #init()}, the image prefix here is "file",
-     * not "img".
+     * Names starting with "img" or "file" are loaded as image from the local path {@code source}, names starting
+     * with "url" are stored as string. The prefixes are the same as in {@link #init()}.
      * @param name the name of the asset, its prefix determines the type
      * @param source the source of the asset (local path for images, URL otherwise)
-     * @return true only if a new "url" asset was added (false if it replaced an existing one);
-     *         image assets always return false, even when they were loaded successfully
+     * @return true if the image was loaded or a new "url" asset was added (false if it replaced an existing one)
      */
     public static boolean add(final String name, final String source) {
-        if (name.startsWith("file")) {
-            final File file = new File(source);
-            if (!file.exists()) {
-                return false;
-            }
-            try {
-                final BufferedImage image = ImageIO.read(file);
-                IMAGE_ASSETS.put(name, image);
-            } catch (IOException e) {
-                LOGGER.error(String.format("Couldnt load image <%s>", source));
-                return false;
-            }
+        if (isImage(name)) {
+            return loadImage(name, source);
         }
         if (name.startsWith("url")) {
             return ASSETS.put(name, source) == null;
         }
         return false;
+    }
+
+    /**
+     * @param name the name of the asset
+     * @return true if the prefix marks an image asset
+     */
+    private static boolean isImage(final String name) {
+        return name.startsWith("img") || name.startsWith("file");
+    }
+
+    /**
+     * Loads an image from a local path into the pool. Failures are logged
+     * @param name the name of the asset
+     * @param source the local path of the image
+     * @return true if the image was loaded
+     */
+    private static boolean loadImage(final String name, final String source) {
+        final File file = new File(source);
+        if (!file.exists()) {
+            LOGGER.info(String.format("Couldnt find file <%s>", source));
+            return false;
+        }
+        try {
+            final BufferedImage image = ImageIO.read(file);
+            if (image == null) {
+                LOGGER.error(String.format("Unsupported image format <%s>", source));
+                return false;
+            }
+            IMAGE_ASSETS.put(name, image);
+            return true;
+        } catch (IOException e) {
+            LOGGER.error(String.format("Couldnt load image <%s>", source));
+            return false;
+        }
     }
 
     /**

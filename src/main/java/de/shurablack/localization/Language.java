@@ -70,9 +70,9 @@ public class Language {
     }
 
     /**
-     * Loads every file in the given directory (not recursive) with {@link #loadLanguageFile(String)}.
+     * Loads every {@code .properties} file in the given directory (not recursive) with {@link #loadLanguageFile(String)}.
      * <br><br>
-     * Files that can't be loaded, e.g. without the {@code .properties} extension, are skipped with a warning.
+     * Other files, e.g. a README, are skipped silently.
      * @param dirPath path of the directory containing the language files
      * @return true if the directory was listed (even if it is empty), false if it isn't a directory
      *         or can't be read
@@ -89,10 +89,11 @@ public class Language {
         }
 
         for (File file : files) {
-            if (!file.isFile()) {
+            // Other files in the folder (e.g. a README) are no languages
+            if (!file.isFile() || !file.getName().endsWith(".properties")) {
                 continue;
             }
-            LOGGER.info("Found language: " + file.getName().substring(0, file.getName().lastIndexOf('.')));
+            LOGGER.info("Found language: " + file.getName().substring(0, file.getName().length() - ".properties".length()));
 
             boolean loadSuccessfully = loadLanguageFile(file.getAbsolutePath());
             if (!loadSuccessfully) {

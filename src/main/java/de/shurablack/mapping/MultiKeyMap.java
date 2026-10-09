@@ -60,14 +60,14 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
 
     /**
      * Maps the key to the value and adds the key to the value's key list.
-     * <br><br>
-     * The key isn't removed from the key list of a previous value, and putting the same pair twice
-     * adds the key twice.
+     * A key that was mapped to another value before leaves the key list of that value.
      */
     @Override
     public V put(final K key, final V value) {
-        final List<K> keys = reverseMap.computeIfAbsent(value, k -> new ArrayList<>());
-        keys.add(key);
+        if (map.containsKey(key)) {
+            unlink(key, map.get(key));
+        }
+        reverseMap.computeIfAbsent(value, k -> new ArrayList<>()).add(key);
 
         return map.put(key, value);
     }
@@ -75,13 +75,26 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
     /** Removes the key from the map and from the key list of its value. */
     @Override
     public V remove(final Object key) {
-        final V value = map.get(key);
-        final List<K> keys = reverseMap.get(value);
-        if (keys != null) {
-            keys.remove(key);
+        if (map.containsKey(key)) {
+            unlink(key, map.get(key));
         }
 
         return map.remove(key);
+    }
+
+    /**
+     * Removes the key from the key list of the value, a list without keys gets removed as well
+     * @param key the key
+     * @param value the value the key is mapped to
+     */
+    private void unlink(final Object key, final V value) {
+        final List<K> keys = reverseMap.get(value);
+        if (keys != null) {
+            keys.remove(key);
+            if (keys.isEmpty()) {
+                reverseMap.remove(value);
+            }
+        }
     }
 
     /** Calls {@link #put(Object, Object)} for every entry. */
@@ -117,7 +130,7 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
     /**
      * Returns all keys associated with the specified value.
      * @param value the specified value
-     * @return the live list of keys, or {@code null} if the value was never put; may be empty after removals
+     * @return the live list of keys, or {@code null} if no key is mapped to the value
      */
     public List<K> getKeys(final V value) {
         return reverseMap.get(value);

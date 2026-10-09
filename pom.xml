@@ -81,6 +81,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+                <configuration>
+                    <!-- Tests write properties files relative to the working directory, keep them out of the project root -->
+                    <workingDirectory>${project.build.directory}/test-workdir</workingDirectory>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

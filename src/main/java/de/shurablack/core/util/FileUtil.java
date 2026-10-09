@@ -66,7 +66,7 @@ public class FileUtil {
         data.append(header).append("\n");
 
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-            data.append((String)entry.getKey()).append("=").append((String)entry.getValue());
+            data.append((String)entry.getKey()).append("=").append((String)entry.getValue()).append("\n");
         }
 
         final File file = new File(path);
@@ -111,19 +111,15 @@ public class FileUtil {
      * Converts a file to a JDA {@link FileUpload}.
      * @param file the file to upload
      * @param name the file name shown in Discord
-     * @return the FileUpload or null if the file doesn't exist or couldn't be opened
+     * @return the FileUpload or null if the file doesn't exist. The file gets read when JDA sends it
      */
     public static FileUpload toFileUpload(final File file, final String name) {
         if (!file.exists()) {
             return null;
         }
 
-        try (final InputStream target = new FileInputStream(file)) {
-            return FileUpload.fromData(target, name);
-        } catch (IOException e) {
-            LOGGER.error("Something went wrong, while opening the file stream", e);
-        }
-        return null;
+        // JDA opens the file when sending, a stream closed here would fail the upload
+        return FileUpload.fromData(file, name);
     }
 
     /**

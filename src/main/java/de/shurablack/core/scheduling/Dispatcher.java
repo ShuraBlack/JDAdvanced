@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.concurrent.*;
 
@@ -45,6 +45,9 @@ public class Dispatcher {
     /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(Dispatcher.class);
 
+    /** Seconds {@link #shutdownService()} waits for running tasks before interrupting them */
+    static final int SHUTDOWN_TIMEOUT_SECONDS = 5;
+
     /** The scheduler for time-based tasks, started lazily by the first scheduled cron task */
     private static final Scheduler SCHEDULER = new Scheduler();
 
@@ -57,15 +60,17 @@ public class Dispatcher {
     private Dispatcher() { }
 
     /**
-     * Starts the service executor. Does nothing if it is already running (not thread-safe, call it once at startup).
+     * Starts the service executor. Does nothing if it is already running; after {@link #shutdownService()}
+     * a new executor gets created.
      * <br><br>
      * The service executor is a fixed thread pool with <code>dispatcher_thread_max</code> threads from the
      * {@link Config} (default: available processors * 2). Tasks beyond that wait in an unbounded queue instead
      * of being discarded. Idle threads terminate after 10 minutes.
      * @throws NumberFormatException if <code>dispatcher_thread_max</code> isn't a valid number
      */
-    public static void start() {
-        if (SERVICE != null) {
+    public static synchronized void start() {
+        // A shut down executor gets replaced, so the dispatcher can be started again
+        if (SERVICE != null && !SERVICE.isShutdown()) {
             return;
         }
 
@@ -99,12 +104,20 @@ public class Dispatcher {
     /**
      * Shuts down the service executor and stops the scheduler if it is running.
      * <br><br>
-     * Already submitted tasks of the executor still run; the method doesn't wait for them.
+     * Already submitted tasks get {@value #SHUTDOWN_TIMEOUT_SECONDS} seconds to finish, afterwards the remaining
+     * ones get interrupted. Does nothing for the executor if {@link #start()} wasn't called.
      */
-    public static void shutdownService() {
-        SERVICE.shutdown();
-        if (!SERVICE.isShutdown()) {
-            SERVICE.shutdownNow();
+    public static synchronized void shutdownService() {
+        if (SERVICE != null) {
+            SERVICE.shutdown();
+            try {
+                if (!SERVICE.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    SERVICE.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                SERVICE.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
         if (SCHEDULER.isStarted()) {
             SCHEDULER.stop();
@@ -136,8 +149,7 @@ public class Dispatcher {
      * Scans the classes configured in {@link ClassScan} for {@link ScheduleClass} classes and schedules each
      * of their {@link Schedule} methods via {@link #scheduleCronTask(String, String, Runnable)}.
      * <br><br>
-     * The methods must be static and parameterless. Methods with parameters are logged and skipped;
-     * non-static methods are scheduled, but fail (logged) on every execution.
+     * The methods must be static and parameterless, other methods are logged and skipped.
      */
     public static void discoverCronTasks() {
         try (ScanResult result = ClassScan.scan()) {
@@ -157,18 +169,19 @@ public class Dispatcher {
                     if (schedule == null) {
                         continue;
                     }
-                    // Only the parameter count is checked here; a non-static method fails on invoke(null) at runtime
-                    if (!Arrays.stream(method.getParameterTypes()).allMatch(p -> p.equals(Void.TYPE))) {
-                        LOGGER.error("Method <\u001b[31m%s\u001b[0m> in class <\u001b[31m%s\u001b[0m> must be static and without parameter", method.getName(), workerClass.getName());
+                    // The task gets invoked without an instance, so it has to be static
+                    if (!Modifier.isStatic(method.getModifiers()) || method.getParameterCount() != 0) {
+                        LOGGER.error("Method <\u001b[31m{}\u001b[0m> in class <\u001b[31m{}\u001b[0m> must be static and without parameter", method.getName(), workerClass.getName());
                         continue;
                     }
+                    method.setAccessible(true);
                     String timePattern = schedule.pattern();
                     String name = schedule.name();
                     Runnable task = () -> {
                         try {
                             method.invoke(null);
                         } catch (Exception e) {
-                            LOGGER.error("Failed to execute scheduled task <\u001b[31m%s\u001b[0m> in class <\u001b[31m%s\u001b[0m>", name, workerClass.getName(), e);
+                            LOGGER.error("Failed to execute scheduled task <\u001b[31m{}\u001b[0m> in class <\u001b[31m{}\u001b[0m>", name, workerClass.getName(), e);
                         }
                     };
 

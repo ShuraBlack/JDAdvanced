@@ -62,4 +62,15 @@ class CommandUploadBuilderTest {
             ClassScan.setPackages();
         }
     }
+
+    @Test
+    void invalidDeclarationUploadsNothing() {
+        // A partial list would delete the missing commands at Discord
+        ClassScan.setPackages("de.shurablack.testdata.invalidcommand");
+        try {
+            assertTrue(CommandUploadBuilder.buildCommands().isEmpty());
+        } finally {
+            ClassScan.setPackages();
+        }
+    }
 }

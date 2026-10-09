@@ -95,7 +95,7 @@ public class ResponseRegister {
         Map<String, Double> averageTimes = new HashMap<>();
         for (Map.Entry<String, List<Double>> entry : responseTimes.entrySet()) {
             String command = entry.getKey();
-            List<Double> times = entry.getValue();
+            List<Double> times = getResponseTimes(command);
             double average = times.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
             averageTimes.put(command, average);
         }
@@ -104,7 +104,7 @@ public class ResponseRegister {
         for (Map.Entry<String, Double> entry : averageTimes.entrySet()) {
             String command = entry.getKey();
             double averageTime = entry.getValue();
-            builder.append(String.format("%s -> %.2f ms [%s]%n", command, averageTime, responseTimes.get(command).stream()
+            builder.append(String.format("%s -> %.2f ms [%s]%n", command, averageTime, getResponseTimes(command).stream()
                     .map(time -> String.format("%.2f", time))
                     .limit(10)
                     .reduce((first, second) -> first + ", " + second)

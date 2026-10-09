@@ -43,29 +43,26 @@ public class VMServer {
     private static VMServer instance;
 
     /** The listening socket, {@code null} until {@link #enable()} succeeds */
-    private ServerSocket server;
+    private volatile ServerSocket server;
 
     /** The connected clients */
     private final List<Client> clients = new CopyOnWriteArrayList<>();
 
     /** Seconds between live data messages, read from {@code vm.read-interval} */
-    private int readInterval = 5;
+    private volatile int readInterval = 5;
 
     /** The metrics source */
     private MBeansTracker tracker;
-
-    /** The thread sending live data, ends when no client is connected */
-    private Thread transfer;
 
     private VMServer() {
         // Private constructor to prevent instantiation
     }
 
     /**
-     * Returns the singleton, creating it on the first call. The lazy creation isn't synchronized.
+     * Returns the singleton, creating it on the first call.
      * @return the server instance
      */
-    public static VMServer get() {
+    public static synchronized VMServer get() {
         if (instance == null) {
             instance = new VMServer();
         }
@@ -73,13 +70,17 @@ public class VMServer {
     }
 
     /**
-     * Reads the configuration, binds the server socket and starts accepting clients on a daemon thread.
+     * Reads the configuration, binds the server socket and starts the daemon threads that accept clients
+     * and send the live data. Both threads end when {@link #stop()} closes the socket.
      * <br><br>
      * Missing or invalid configuration and bind failures are logged and the server is not started.
-     * The socket has no authentication, see the class description.
-     * @throws NumberFormatException if {@code vm.port} isn't a number
+     * Does nothing if the server is already running. The socket has no authentication, see the class description.
      */
-    public void enable() {
+    public synchronized void enable() {
+        if (server != null && !server.isClosed()) {
+            LOGGER.warn("VMServer is already running");
+            return;
+        }
         final String rawPort = Config.getConfig("vm.port");
         if (rawPort == null || rawPort.isEmpty()) {
             LOGGER.error("VM port is not configured in the config file");
@@ -90,35 +91,36 @@ public class VMServer {
             LOGGER.error("VM read interval is not configured in the config file");
             return;
         }
+        final int port;
         try {
+            port = Integer.parseInt(rawPort);
             this.readInterval = Integer.parseInt(readInterval);
             if (this.readInterval <= 0) {
                 LOGGER.error("VM read interval must be a positive integer");
                 return;
             }
         } catch (NumberFormatException e) {
-            LOGGER.error("Invalid VM read interval format: {}", readInterval, e);
+            LOGGER.error("Invalid VM port <{}> or read interval <{}>", rawPort, readInterval, e);
             return;
         }
-
-        final int port = Integer.parseInt(Config.getConfig("vm.port"));
 
         // Loopback by default: the stream is unauthenticated. Set vm.host=0.0.0.0 to expose it
         final String host = Config.getConfig("vm.host") == null ? "127.0.0.1" : Config.getConfig("vm.host");
         tracker = MBeansTracker.get();
         try {
             server = new ServerSocket(port, 1, InetAddress.getByName(host));
-            LOGGER.info("VMServer started on {}:{}", host, port);
-            listenForClients();
+            LOGGER.info("VMServer started on {}:{}", host, server.getLocalPort());
+            startThread(this::acceptClients, "VMServer_accept");
+            startThread(this::sendLiveData, "VMServer_transfer");
         } catch (Exception e) {
             LOGGER.error("Failed to start VMServer on port {}", port, e);
         }
     }
 
     /**
-     * Closes the server socket and all client connections.
+     * Closes the server socket, which ends both threads, and all client connections.
      */
-    public void stop() {
+    public synchronized void stop() {
         if (server != null && !server.isClosed()) {
             try {
                 server.close();
@@ -130,73 +132,81 @@ public class VMServer {
         for (Client client : clients) {
             client.close();
         }
+        clients.clear();
     }
 
     /**
-     * Starts the daemon thread that accepts clients, sends them the system information and starts the
-     * live data thread for the first client.
+     * @return the port the server listens on, -1 if it isn't running
      */
-    private void listenForClients() {
-        Thread accept = new Thread(() -> {
-            while (true) {
-                try {
-                    Socket clientSocket = server.accept();
-                    Client client = new Client(clientSocket);
-                    if (client.set()) {
-                        clients.add(client);
-                        Thread.sleep(100);
-                        client.send(tracker.getSystemInfo());
-                        if (clients.size() == 1) {
-                            startLiveData();
-                        }
-                        LOGGER.info("New client connected: {}", clientSocket.getInetAddress());
-                    } else {
-                        LOGGER.error("Failed to set up client connection");
-                        client.close();
-                    }
-                } catch (Exception e) {
+    synchronized int getPort() {
+        return server == null || server.isClosed() ? -1 : server.getLocalPort();
+    }
+
+    /**
+     * @return true if the server socket is open
+     */
+    private boolean isRunning() {
+        final ServerSocket socket = server;
+        return socket != null && !socket.isClosed();
+    }
+
+    private static void startThread(final Runnable task, final String name) {
+        final Thread thread = new Thread(task, name);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * Accepts clients and sends them the system information, until the server socket gets closed
+     */
+    private void acceptClients() {
+        final ServerSocket socket = server;
+        while (!socket.isClosed()) {
+            try {
+                final Socket clientSocket = socket.accept();
+                final Client client = new Client(clientSocket);
+                if (client.set() && client.send(tracker.getSystemInfo())) {
+                    clients.add(client);
+                    LOGGER.info("New client connected: {}", clientSocket.getInetAddress());
+                } else {
+                    LOGGER.error("Failed to set up client connection");
+                    client.close();
+                }
+            } catch (Exception e) {
+                // accept() throws once stop() closed the socket, that's the regular end
+                if (!socket.isClosed()) {
                     LOGGER.error("Error accepting client connection", e);
                 }
             }
-        }, "VMServer_accept");
-        accept.setDaemon(true);
-        accept.start();
-
-        startLiveData();
+        }
     }
 
     /**
-     * Starts the daemon thread that sends live data to all clients unless it is already running.
-     * <br><br>
-     * Clients whose send fails are closed and removed. The thread ends once no client is connected.
+     * Sends the live data to all clients every read interval, until the server socket gets closed.
+     * Clients whose connection broke get closed and removed
      */
-    private void startLiveData() {
-        if (transfer != null && transfer.isAlive()) {
-            LOGGER.warn("Live data transfer thread is already running");
-            return;
-        }
-        transfer = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(readInterval * 1000L);
-                    if (clients.isEmpty()) {
-                        LOGGER.info("No clients connected, skipping live data transfer");
-                        return;
-                    }
-                    JSONObject data = tracker.getLiveInfo();
-                    for (Client client : clients) {
-                        if (!client.send(data)) {
-                            client.close();
-                            clients.remove(client);
-                        }
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("Error in live data transfer", e);
+    private void sendLiveData() {
+        while (isRunning()) {
+            try {
+                Thread.sleep(readInterval * 1000L);
+                if (clients.isEmpty()) {
+                    continue;
                 }
+                final JSONObject data = tracker.getLiveInfo();
+                for (Client client : clients) {
+                    if (!client.send(data)) {
+                        client.close();
+                        clients.remove(client);
+                        LOGGER.info("Client disconnected");
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (Exception e) {
+                LOGGER.error("Error in live data transfer", e);
             }
-        }, "VMServer_transfer");
-        transfer.setDaemon(true);
-        transfer.start();
+        }
     }
 
     /** A connected client with its output stream. */
@@ -225,24 +235,16 @@ public class VMServer {
 
         /**
          * Writes the message as one line.
-         * <br><br>
-         * {@link PrintWriter} doesn't throw on I/O errors, so a connection closed by the remote side
-         * isn't detected here.
          * @param message the message to send
-         * @return false if the socket was closed locally or writing threw an exception, true otherwise
+         * @return false if the socket is closed or the connection broke, true otherwise
          */
         public boolean send(JSONObject message) {
             if (socket.isClosed()) {
                 return false;
             }
-
-            try {
-                out.println(message.toString());
-                return true;
-            } catch (Exception e) {
-                LOGGER.error("Failed to send message to client", e);
-                return false;
-            }
+            out.println(message.toString());
+            // PrintWriter doesn't throw on I/O errors, a broken connection only shows up here
+            return !out.checkError();
         }
 
         /** Closes the writer and the socket; errors are logged. */

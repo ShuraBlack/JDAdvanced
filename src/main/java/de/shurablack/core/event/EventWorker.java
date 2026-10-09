@@ -79,7 +79,7 @@ public abstract class EventWorker {
      * {@link de.shurablack.core.event.annotation.command.CommandHandler @CommandHandler} registrations.
      * </p>
      * @param user the {@link User} who used the command
-     * @param channel the private channel where the command got used
+     * @param channel the private channel where the command got used, null outside of private channels (e.g. group DMs)
      * @param name the command name of {@link SlashCommandInteractionEvent#getName()}
      * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */

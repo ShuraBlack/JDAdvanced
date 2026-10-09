@@ -9,6 +9,7 @@ import de.shurablack.core.event.validation.ValidationEvent;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
@@ -211,7 +212,10 @@ public abstract class AbstractEventHandler extends EventHandler {
     @Override
     public void onGlobalSlashEvent(final String identifier, final SlashCommandInteractionEvent event) {
         handle(slashIdentifier(Type.GLOBAL_SLASH, identifier, event), Type.GLOBAL_SLASH, event.getUser(), null, event.getChannel().getId(), event,
-                e -> e.getWorker().processGlobalSlashEvent(event.getUser(), event.getChannel().asPrivateChannel(), event.getName(), event));
+                // Group DMs and user installed commands arent private channels, the worker gets null there
+                e -> e.getWorker().processGlobalSlashEvent(event.getUser(),
+                        event.getChannelType() == ChannelType.PRIVATE ? event.getChannel().asPrivateChannel() : null,
+                        event.getName(), event));
     }
 
     @Override

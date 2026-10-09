@@ -43,10 +43,10 @@ public class DefaultServerNotifier extends ListenerAdapter {
     /** Webhook URL of the channel the announcements are posted to */
     private final String webHookLink;
 
-    /** Texts for join announcements, one is picked at random; {@code null} uses a default text */
+    /** Texts for join announcements, one is picked at random; {@code null} or empty uses a default text */
     private List<String> joinMessage;
 
-    /** Texts for leave announcements, one is picked at random; the default text is used only if {@link #joinMessage} is {@code null} */
+    /** Texts for leave announcements, one is picked at random; {@code null} or empty uses a default text */
     private List<String> leaveMessage;
 
     /** Flags that enable the announcement of the respective event */
@@ -57,9 +57,8 @@ public class DefaultServerNotifier extends ListenerAdapter {
      * <br><br>
      * The texts are appended to the mention of the user, e.g. {@code "@User, welcome to the server"}.
      * @param webHookLink the webhook URL of the target channel
-     * @param joinMessage texts for join announcements; must not be empty, {@code null} uses a default text
-     * @param leaveMessage texts for leave announcements; must not be empty, and must not be {@code null}
-     *                     unless {@code joinMessage} is {@code null} too (then the default text is used)
+     * @param joinMessage texts for join announcements; {@code null} or empty uses a default text
+     * @param leaveMessage texts for leave announcements; {@code null} or empty uses a default text
      * @param join whether member joins are announced
      * @param leave whether members leaving (or being kicked) are announced
      * @param ban whether bans are announced
@@ -119,8 +118,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
         }
         final WebhookEmbedBuilder eb = createMessageTemplate(
                 event.getUser(),
-                (this.joinMessage == null ? "welcome to the server"
-                        : this.joinMessage.get(ThreadLocalRandom.current().nextInt(0, this.joinMessage.size()))),
+                pick(this.joinMessage, "welcome to the server"),
                 ServerUtil.GREEN
         );
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
@@ -134,8 +132,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
         }
         final WebhookEmbedBuilder eb = createMessageTemplate(
                 event.getUser(),
-                (this.joinMessage == null ? "see you later"
-                        : this.leaveMessage.get(ThreadLocalRandom.current().nextInt(0, this.leaveMessage.size()))),
+                pick(this.leaveMessage, "see you later"),
                 ServerUtil.RED
         );
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
@@ -186,6 +183,19 @@ public class DefaultServerNotifier extends ListenerAdapter {
                 .setColor(ServerUtil.BOOST)
                 .setDescription(msg);
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
+    }
+
+    /**
+     * Picks a random message
+     * @param messages the configured messages, can be null or empty
+     * @param fallback the message used if there are none
+     * @return a random message or the fallback
+     */
+    private static String pick(final List<String> messages, final String fallback) {
+        if (messages == null || messages.isEmpty()) {
+            return fallback;
+        }
+        return messages.get(ThreadLocalRandom.current().nextInt(messages.size()));
     }
 
     /**

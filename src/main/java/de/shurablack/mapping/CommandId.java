@@ -25,9 +25,7 @@ public class CommandId {
     private final String[] sub;
 
     /**
-     * Splits the input at single spaces; the first token becomes the primary command.
-     * <br><br>
-     * Note: the current length check is inverted, so no sub-commands are stored for any input.
+     * Splits the input at single spaces; the first token becomes the primary command, the others the sub-commands.
      * @param input the user input/message, must not be {@code null}
      * @throws IllegalArgumentException if the input is empty
      */
@@ -38,11 +36,8 @@ public class CommandId {
         String[] args = input.split(" ");
         this.primary = args[0];
 
-        if (args.length > 1) {
-            this.sub = new String[0];
-        } else {
-            this.sub = Arrays.copyOfRange(args, 1, args.length);
-        }
+        // Empty for a single word
+        this.sub = Arrays.copyOfRange(args, 1, args.length);
     }
 
     /**

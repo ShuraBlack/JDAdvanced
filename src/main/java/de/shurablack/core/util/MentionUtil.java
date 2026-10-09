@@ -65,29 +65,26 @@ public class MentionUtil {
     }
 
     /**
-     * Strips the mention syntax and returns the inner value.
+     * Strips the mention syntax and returns the ID.
      * <br><br>
-     * Role, user, channel and slash command mentions return everything between the prefix and the closing
-     * bracket (e.g. "name:id" for a slash command, "!id" for a legacy nickname mention). Custom emojis
-     * (<code>&lt;:name:id&gt;</code>) return the part from the second colon on, including that colon (":id").
-     * Animated emojis (<code>&lt;a:...&gt;</code>) aren't supported.
+     * Supports role (<code>&lt;@&amp;id&gt;</code>), user (<code>&lt;@id&gt;</code>, legacy <code>&lt;@!id&gt;</code>),
+     * channel (<code>&lt;#id&gt;</code>), custom emoji (<code>&lt;:name:id&gt;</code>, animated <code>&lt;a:name:id&gt;</code>)
+     * and slash command (<code>&lt;/name:id&gt;</code>) mentions.
      * @param mention the mention string
-     * @return the inner value or null if the input is null, empty or no supported mention
+     * @return the ID or null if the input is null or no supported mention
      */
     public static String unwrap(String mention) {
-        if (mention == null || mention.isEmpty()) {
+        if (mention == null || !mention.startsWith("<") || !mention.endsWith(">")) {
             return null;
         }
-        if (mention.startsWith("<@&")) {
-            return mention.substring(3, mention.length() - 1);
-        } else if (mention.startsWith("<@")) {
-            return mention.substring(2, mention.length() - 1);
-        } else if (mention.startsWith("<#")) {
-            return mention.substring(2, mention.length() - 1);
-        } else if (mention.startsWith("<:")) {
-            return mention.substring(mention.indexOf(':', 2), mention.length() - 1);
-        } else if (mention.startsWith("</")) {
-            return mention.substring(2, mention.length() - 1);
+        final String inner = mention.substring(1, mention.length() - 1);
+        if (inner.startsWith("@&") || inner.startsWith("@!")) {
+            return inner.substring(2);
+        } else if (inner.startsWith("@") || inner.startsWith("#")) {
+            return inner.substring(1);
+        } else if (inner.startsWith(":") || inner.startsWith("a:") || inner.startsWith("/")) {
+            // Emojis and commands carry their name before the ID
+            return inner.substring(inner.lastIndexOf(':') + 1).replaceFirst("^/", "");
         }
         return null;
     }
