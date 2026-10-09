@@ -6,8 +6,21 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 
+/**
+ * <p>
+ * Builds human-readable reports of the memory usage and CPU load of the running JVM, e.g. for logging.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class VM {
 
+    /**
+     * Builds a multi-line report of the {@link Runtime} memory and the heap/non-heap usage of the memory MXBean.
+     * <br><br>
+     * Values are in whole megabytes (truncated); an undefined maximum is reported as {@code 0 MB}.
+     * @return the memory report
+     */
     public static String getMemoryUsage() {
         final StringBuilder memoryUsage = new StringBuilder();
         Runtime runtime = Runtime.getRuntime();
@@ -37,6 +50,10 @@ public class VM {
         return memoryUsage.toString();
     }
 
+    /**
+     * Describes the recent CPU usage of the JVM process as a percentage of all CPUs (unrounded).
+     * @return the CPU load text, or a notice if the value isn't available
+     */
     public static String getProcessLoad() {
         OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 

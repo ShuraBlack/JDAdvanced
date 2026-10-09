@@ -1,6 +1,7 @@
 package de.shurablack.core.builder;
 
 import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
@@ -54,6 +55,9 @@ class CommandUploadBuilderTest {
                     .filter(c -> c.getName().equals("ping")).findFirst().orElseThrow();
             assertEquals("target", ping.getOptions().get(0).getName());
             assertEquals(OptionType.USER, ping.getOptions().get(0).getType());
+            // Context commands need runtime retention, otherwise the whole build fails and nothing gets uploaded
+            assertTrue(CommandUploadBuilder.buildCommands().get("GLOBAL").stream()
+                    .anyMatch(c -> c.getName().equals("Report") && c.getType() == Command.Type.MESSAGE));
         } finally {
             ClassScan.setPackages();
         }

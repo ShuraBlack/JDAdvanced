@@ -13,26 +13,58 @@ import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * <p>
+ * Singleton TCP server that streams JVM metrics from {@link MBeansTracker} to connected clients.
+ * <br><br>
+ * Every message is a single line of JSON. A client receives {@link MBeansTracker#getSystemInfo()} once after
+ * connecting and then {@link MBeansTracker#getLiveInfo()} every {@code vm.read-interval} seconds. Clients don't
+ * need to send anything.
+ * <br><br>
+ * Configuration keys:
+ * </p>
+ * <ul>
+ *     <li>{@code vm.port} (required): the port to listen on</li>
+ *     <li>{@code vm.read-interval} (required): seconds between live data messages, must be positive</li>
+ *     <li>{@code vm.host} (optional): the address to bind to, default {@code 127.0.0.1}</li>
+ * </ul>
+ * <p>
+ * <b>Security:</b> the socket is plain text and has no authentication. Anyone who can reach the port can read
+ * the metrics, so only bind to a non-loopback address inside a trusted network.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class VMServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VMServer.class);
 
+    /** Lazily created singleton */
     private static VMServer instance;
 
+    /** The listening socket, {@code null} until {@link #enable()} succeeds */
     private ServerSocket server;
 
+    /** The connected clients */
     private final List<Client> clients = new CopyOnWriteArrayList<>();
 
+    /** Seconds between live data messages, read from {@code vm.read-interval} */
     private int readInterval = 5;
 
+    /** The metrics source */
     private MBeansTracker tracker;
 
+    /** The thread sending live data, ends when no client is connected */
     private Thread transfer;
 
     private VMServer() {
         // Private constructor to prevent instantiation
     }
 
+    /**
+     * Returns the singleton, creating it on the first call. The lazy creation isn't synchronized.
+     * @return the server instance
+     */
     public static VMServer get() {
         if (instance == null) {
             instance = new VMServer();
@@ -40,6 +72,13 @@ public class VMServer {
         return instance;
     }
 
+    /**
+     * Reads the configuration, binds the server socket and starts accepting clients on a daemon thread.
+     * <br><br>
+     * Missing or invalid configuration and bind failures are logged and the server is not started.
+     * The socket has no authentication, see the class description.
+     * @throws NumberFormatException if {@code vm.port} isn't a number
+     */
     public void enable() {
         final String rawPort = Config.getConfig("vm.port");
         if (rawPort == null || rawPort.isEmpty()) {
@@ -76,6 +115,9 @@ public class VMServer {
         }
     }
 
+    /**
+     * Closes the server socket and all client connections.
+     */
     public void stop() {
         if (server != null && !server.isClosed()) {
             try {
@@ -90,6 +132,10 @@ public class VMServer {
         }
     }
 
+    /**
+     * Starts the daemon thread that accepts clients, sends them the system information and starts the
+     * live data thread for the first client.
+     */
     private void listenForClients() {
         Thread accept = new Thread(() -> {
             while (true) {
@@ -119,6 +165,11 @@ public class VMServer {
         startLiveData();
     }
 
+    /**
+     * Starts the daemon thread that sends live data to all clients unless it is already running.
+     * <br><br>
+     * Clients whose send fails are closed and removed. The thread ends once no client is connected.
+     */
     private void startLiveData() {
         if (transfer != null && transfer.isAlive()) {
             LOGGER.warn("Live data transfer thread is already running");
@@ -148,6 +199,7 @@ public class VMServer {
         transfer.start();
     }
 
+    /** A connected client with its output stream. */
     private static class Client {
 
         private final Socket socket;
@@ -157,6 +209,10 @@ public class VMServer {
             this.socket = socket;
         }
 
+        /**
+         * Opens the auto-flushing writer for the socket.
+         * @return true if the writer was created
+         */
         public boolean set() {
             try {
                 this.out = new PrintWriter(socket.getOutputStream(), true);
@@ -167,6 +223,14 @@ public class VMServer {
             return true;
         }
 
+        /**
+         * Writes the message as one line.
+         * <br><br>
+         * {@link PrintWriter} doesn't throw on I/O errors, so a connection closed by the remote side
+         * isn't detected here.
+         * @param message the message to send
+         * @return false if the socket was closed locally or writing threw an exception, true otherwise
+         */
         public boolean send(JSONObject message) {
             if (socket.isClosed()) {
                 return false;
@@ -181,6 +245,7 @@ public class VMServer {
             }
         }
 
+        /** Closes the writer and the socket; errors are logged. */
         public void close() {
             try {
                 if (out != null) {
@@ -195,6 +260,7 @@ public class VMServer {
         }
     }
 
+    /** Manual test: starts the server from the config file and keeps the JVM alive. */
     private static class TestClient {
         public static void main(String[] args) {
             Config.loadConfig();

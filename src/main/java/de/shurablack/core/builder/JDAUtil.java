@@ -16,11 +16,11 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
  * <br>
  *
  * <p>
- * The JDAUtil class is a Java class that provides a way to interact with a Discord bot
- * , as well as using a command-line interface
- * <br>
- * It can only be created via the {@link UtilBuilder}.
- * <br>
+ * Wraps a single {@link JDA} instance and provides the command-line interface of {@link BaseUtil}.
+ * The console starts with the first {@link ReadyEvent}.
+ * <br><br>
+ * It can only be created via the {@link UtilBuilder}. The JDA instance is stored statically,
+ * so only one JDAUtil per application is supported.
  * </p>
  *
  * @see UtilBuilder UtilBuilder
@@ -30,13 +30,13 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
  */
 public class JDAUtil extends BaseUtil {
 
-    /** Presents the discord bot */
+    /** The Discord bot, null until a JDAUtil was created */
     private static JDA JDA;
 
     /**
-     * This is the constructor for the JDAUtil class
-     * @param jda the specified discord bot
-     * @param handler the specified hadler object
+     * Stores the bot and registers a listener that calls {@link #onReady()} on its ready event
+     * @param jda the Discord bot
+     * @param handler the handler for the Discord events
      */
     JDAUtil(final JDA jda, final EventHandler handler) {
         super(handler);
@@ -55,7 +55,8 @@ public class JDAUtil extends BaseUtil {
     }
 
     /**
-     * @return the {@link JDA} object which needs be link with {@link UtilBuilder#create(JDABuilder, EventHandler)}
+     * @return the {@link JDA} instance created by {@link UtilBuilder#create(JDABuilder, EventHandler)},
+     * null if no JDAUtil was created yet
      */
     public static JDA getJDA() {
         return JDA;

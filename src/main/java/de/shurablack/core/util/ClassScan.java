@@ -21,27 +21,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class ClassScan {
 
+    /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassScan.class);
 
-    /** The hint about the whole classpath scan gets logged once */
+    /** Ensures the hint about the whole classpath scan gets logged only once */
     private static final AtomicBoolean HINTED = new AtomicBoolean(false);
 
-    /** Packages to scan, empty string means the whole classpath */
+    /** Packages to scan; a single empty string means the whole classpath */
     private static volatile String[] packages = {""};
 
     private ClassScan() { }
 
     /**
-     * Restricts the scans to the given packages (including sub packages)
-     * @param basePackages the packages to scan, none for the whole classpath
+     * Restricts the scans to the given packages (including sub packages). Only affects scans started afterwards.
+     * @param basePackages the packages to scan, none to scan the whole classpath again
      */
     public static void setPackages(final String... basePackages) {
         packages = basePackages.length == 0 ? new String[]{""} : basePackages.clone();
     }
 
     /**
-     * Scans the configured packages. The result needs to be closed
-     * @return the {@link ScanResult}
+     * Scans the configured packages with all ClassGraph info enabled (annotations, methods, fields).
+     * Logs a one-time hint if the whole classpath is scanned.
+     * @return the {@link ScanResult}, which must be closed by the caller (e.g. try-with-resources)
      */
     public static ScanResult scan() {
         final String[] scanned = packages;

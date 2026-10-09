@@ -4,11 +4,11 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * The CommandAction class is a simple Java class that represents an
- * action that can be performed by a command-line interface
+ * Represents a named action of the command-line interface. A console line is passed to the
+ * first action whose name is a prefix of the line, so the full line (including the name) is the input.
  * <br><br>
- * A CommandAction can be registered on {@link UtilBuilder#setCommandLineAction(CommandAction...)} or
- * {@link JDAUtil#addAction(CommandAction)}
+ * A CommandAction can be registered via {@link UtilBuilder#setCommandLineAction(CommandAction...)} or
+ * {@link ShardUtilBuilder#setCommandLineAction(CommandAction...)}
  * <br><br>
  * Example:
  * </p>
@@ -17,14 +17,14 @@ import java.util.function.Consumer;
  * CommandAction action = new CommandAction(
  *     "hello-world",
  *     "Prints 'Hello, World!' to the console",
- *     (String args) -> System.log.println("Hello, World!")
+ *     (String input) -> System.out.println("Hello, World!")
  * );
  *
  * // Print the name and description of the action
  * System.out.println("Name: " + action.getName());
  * System.out.println("Description: " + action.getDescription());
  *
- * // Invoke the action by calling the getConsumer() method and passing in any necessary arguments
+ * // Invoke the action manually, passing the command line input
  * action.getConsumer().accept("");
  * }</pre>
  *
@@ -35,31 +35,26 @@ import java.util.function.Consumer;
 public class CommandAction {
 
     /**
-     * A string representing the name of the action.
-     * This is the name that will be used to invoke the action from the command-line interface
+     * Name of the action. A console line starting with this name invokes the action
      */
     private final String name;
 
     /**
-     * A string providing a description of the action.
-     * This description can be displayed to the user to help them understand what the action does
+     * Short description of the action, listed in the console banner
      */
     private final String description;
 
     /**
-     * Object representing the action to be performed when the command is invoked.
-     * This object should take a single string argument representing any additional
-     * arguments that are passed to the command, and it should perform the desired action
+     * Code performed when the action is invoked. It receives the whole console line,
+     * including the action name, and runs on the console thread
      */
     private final Consumer<String> consumer;
 
     /**
-     * This is the constructor for the CommandAction class.
-     * It takes three arguments: the name and description of the action,
-     * and a consumer object representing the action to be performed.
-     * @param name the specified name
-     * @param description the specified short description
-     * @param consumer the code which will be performed on call
+     * Creates a new action
+     * @param name the name, used as prefix to match console lines
+     * @param description the short description shown in the banner
+     * @param consumer the code performed on call, receives the whole console line
      */
     public CommandAction(final String name, final String description, final Consumer<String> consumer) {
         this.name = name;
@@ -67,23 +62,17 @@ public class CommandAction {
         this.consumer = consumer;
     }
 
-    /**
-     * @return  the 'name' of the action
-     */
+    /** @return the name of the action */
     public String getName() {
         return name;
     }
 
-    /**
-     * @return the 'description' of the action
-     */
+    /** @return the description of the action */
     public String getDescription() {
         return description;
     }
 
-    /**
-     * @return the 'consumer' object representing the action to be performed
-     */
+    /** @return the code performed on call, receives the whole console line */
     public Consumer<String> getConsumer() {
         return consumer;
     }

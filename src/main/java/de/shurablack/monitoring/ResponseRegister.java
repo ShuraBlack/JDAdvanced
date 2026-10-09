@@ -10,20 +10,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * <p>
+ * Thread-safe singleton that records execution times in milliseconds per command key.
+ * <br><br>
+ * Only the latest 1000 times per key are kept. The event dispatching uses keys of the form
+ * {@code "<event type>#<identifier>"}.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class ResponseRegister {
 
+    /** The singleton instance */
     private static final ResponseRegister INSTANCE = new ResponseRegister();
 
+    /** Recorded times in milliseconds per key; each list is synchronized and ordered from oldest to newest */
     private final Map<String, List<Double>> responseTimes = new ConcurrentHashMap<>();
 
     private ResponseRegister() {
         // Private constructor to prevent instantiation
     }
 
+    /** @return the singleton instance */
     public static ResponseRegister getInstance() {
         return INSTANCE;
     }
 
+    /**
+     * Runs the runnable on the calling thread and records its execution time, also if it throws.
+     * @param runnable the task to run
+     * @param command the key to record the time under
+     */
     public void trackRunnable(Runnable runnable, String command) {
         long startTime = System.nanoTime();
         try {
@@ -33,6 +51,11 @@ public class ResponseRegister {
         }
     }
 
+    /**
+     * Records a time for the key, dropping the oldest entry once more than 1000 are stored.
+     * @param command the key to record the time under
+     * @param time the execution time in milliseconds
+     */
     public void addResponseTime(String command, double time) {
         List<Double> times = responseTimes.computeIfAbsent(command, k -> Collections.synchronizedList(new ArrayList<>()));
         synchronized (times) {
@@ -43,6 +66,10 @@ public class ResponseRegister {
         }
     }
 
+    /**
+     * @param command the key
+     * @return a copy of the recorded times in milliseconds, oldest first; empty if the key is unknown
+     */
     public List<Double> getResponseTimes(String command) {
         List<Double> times = responseTimes.getOrDefault(command, Collections.emptyList());
         synchronized (times) {
@@ -50,14 +77,21 @@ public class ResponseRegister {
         }
     }
 
+    /**
+     * Returns the internal map, not a copy. The lists are synchronized; hold their lock while iterating.
+     * @return the live map from key to recorded times in milliseconds
+     */
     public Map<String, List<Double>> getAllResponseTimes() {
         return responseTimes;
     }
 
+    /**
+     * Logs on info level the average time of every key followed by its first (oldest retained) ten times.
+     * Despite its name, this method returns nothing.
+     */
     public void getResponseSummary() {
         final Logger logger = LoggerFactory.getLogger(ResponseRegister.class);
 
-        // get average response time of all keys
         Map<String, Double> averageTimes = new HashMap<>();
         for (Map.Entry<String, List<Double>> entry : responseTimes.entrySet()) {
             String command = entry.getKey();

@@ -13,12 +13,17 @@ import java.util.List;
 
 /**
  * <p>
- * EventHandler which runs the {@link de.shurablack.core.event.EventWorker} on the {@link Dispatcher} thread pool
- * and records the response times in the {@link ResponseRegister}
+ * EventHandler which runs the validation and the {@link de.shurablack.core.event.EventWorker} on the
+ * {@link Dispatcher} thread pool and records the execution times in the {@link ResponseRegister}.
+ * The JDA event thread is free again right away, so long running workers don't block further events.
  * <br><br>
- * To bind the {@link net.dv8tion.jda.api.hooks.ListenerAdapter ListenerAdapter} event use the correct
- * <b>call</b> function within the Listener
+ * Pass the handler to the listeners, they call the matching <b>on*Event</b> method:
  * </p>
+ * <pre>{@code
+ * DispatchEventHandler handler = DispatchEventHandler.createDefault()
+ *         .registerEvent(InteractionSet.fromAnnotation());
+ * jda.addEventListener(new DefaultSlashReceiver(handler));
+ * }</pre>
  *
  * @see AbstractEventHandler
  * @see DefaultInteractionReceiver DefaultInteractionReceiver
@@ -33,7 +38,8 @@ import java.util.List;
 public class DispatchEventHandler extends AbstractEventHandler {
 
     /**
-     * Creates a new EventHandler object
+     * Creates a handler with the default settings: bot requests ignored, error feedback on, no admin bypass.
+     * The prefix stays unchanged
      * @return the handler for chaining
      */
     public static DispatchEventHandler createDefault() {
@@ -41,11 +47,12 @@ public class DispatchEventHandler extends AbstractEventHandler {
     }
 
     /**
-     * Creates a new EventHandler object
-     * @param prefix the prefix for regular messages
-     * @param ignoreBotRequest the ignore flag
+     * Creates a handler with the given settings
+     * @param prefix the prefix for message commands (static, shared by all handlers), null or empty for
+     *               {@link EventHandler#DEFAULT_PREFIX}. Set it before the interactions get created
+     * @param ignoreBotRequest whether events triggered by bots get rejected
      * @param errorFeedback whether failed validations get an ephemeral error reply
-     * @param adminBypass whether administrators bypass channel restrictions and cooldowns
+     * @param adminBypass whether administrators bypass the channel restrictions and cooldowns of guild events
      * @return the handler for chaining
      */
     public static DispatchEventHandler create(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
@@ -54,6 +61,7 @@ public class DispatchEventHandler extends AbstractEventHandler {
         return handler;
     }
 
+    /** {@inheritDoc} Narrows the return type for chaining. */
     @Override
     public DispatchEventHandler registerEvent(final List<InteractionSet> set) {
         super.registerEvent(set);
@@ -61,7 +69,8 @@ public class DispatchEventHandler extends AbstractEventHandler {
     }
 
     /**
-     * Dispatches the task and records its execution time in the {@link ResponseRegister}
+     * Dispatches the task and records its execution time under "TYPE#identifier" in the {@link ResponseRegister}.
+     * Exceptions of the task get logged by the {@link Dispatcher}
      */
     @Override
     protected void execute(final Type type, final String identifier, final Runnable task) {

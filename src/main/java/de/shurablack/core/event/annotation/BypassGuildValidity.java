@@ -7,12 +7,14 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Annotation to mark a method to bypass guild validity checks.
- * </p>
- *
- * <p>
- * This annotation is used to indicate that the annotated method should bypass any guild validity checks
- * that would normally be applied. This can be useful for methods that need to operate regardless of guild context.
+ * Marks an {@link EventProcess} method whose interaction skips the guild validity checks.
+ * <br><br>
+ * For events with a guild member the channel restriction and the admin bypass are skipped, so the event can be
+ * triggered in every channel and administrators are still subject to the cooldowns. Required permissions are
+ * still checked. A warning gets logged on discovery for every annotated method.
+ * <br><br>
+ * Only evaluated together with {@link EventProcess}, it has no effect on {@link ExtendedEventProcess} or
+ * {@link de.shurablack.core.event.annotation.command.CommandHandler CommandHandler} interactions.
  * </p>
  *
  * @version core-1.1.0

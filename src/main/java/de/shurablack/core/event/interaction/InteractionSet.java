@@ -23,10 +23,15 @@ import java.util.function.Function;
 
 /**
  * <p>
- * The InteractionSet class is a utility class that stores a list of {@link Interaction} objects and an associated {@link EventWorker} object.
+ * Stores the {@link Interaction Interactions} of one {@link EventWorker}.
  * <br><br>
- * It provides methods for creating and setting the interactions and for accessing the stored interactions and worker
+ * Sets are discovered from the annotations by {@link #fromAnnotation()} and passed to
+ * {@link de.shurablack.core.event.handler.EventHandler#registerEvent(List)}:
  * </p>
+ * <pre>{@code
+ * NativeEventHandler handler = NativeEventHandler.createDefault()
+ *         .registerEvent(InteractionSet.fromAnnotation());
+ * }</pre>
  *
  * @see Interaction Interaction
  * @version core-1.0.0
@@ -45,9 +50,9 @@ public class InteractionSet {
     private InteractionSet() { }
 
     /**
-     * This is a static factory method that creates a new InteractionSet object.
+     * Creates an InteractionSet, used by the annotation scan
      * @param worker the associated {@link EventWorker}
-     * @param interactions the set of {@link Interaction Options}
+     * @param interactions the interactions handled by the worker
      * @return the built InteractionSet
      */
     static InteractionSet create(final EventWorker worker, final Interaction... interactions) {
@@ -58,7 +63,7 @@ public class InteractionSet {
     }
 
     /**
-     * @return the Options stored in the Set
+     * @return the interactions stored in the set (mutable internal list)
      */
     public List<Interaction> getInteractions() {
         return interactions;
@@ -72,15 +77,10 @@ public class InteractionSet {
     }
 
     /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
-     * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
-     *
-     * @see EventProcess
-     * @see RedirectedProcess
-     * @see ExtendedEventProcess
-     * @see DisabledWorker
+     * Scans the packages configured in {@link ClassScan} for {@link EventWorker} subclasses and classes declaring
+     * {@link CommandHandler} methods, creates one instance per concrete class and builds their InteractionSets.
+     * Anonymous, abstract and {@link DisabledWorker} classes are skipped.
+     * @param instanceFactory creates the instance of a discovered class, null skips the class
      * @return the list of InteractionSets
      */
     private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> instanceFactory) {
@@ -94,10 +94,10 @@ public class InteractionSet {
                 declarations.put(command.name(), command);
             }
 
-            // One instance per class, even if it has worker methods and sub command handlers
+            // One instance per class, even if it has worker methods and subcommand handlers
             final Map<String, ClassInfo> classes = new LinkedHashMap<>();
             result.getSubclasses(EventWorker.class).forEach(info -> classes.put(info.getName(), info));
-            // Internal worker, gets created per handler method
+            // Internal worker, gets created per handler method in fromCommandHandlers
             classes.remove(SlashCommandInvoker.class.getName());
             // Only classes declaring handlers themselves, subclasses inheriting them would register a second instance
             result.getClassesWithMethodAnnotation(CommandHandler.class).stream()
@@ -105,7 +105,7 @@ public class InteractionSet {
                     .forEach(info -> classes.putIfAbsent(info.getName(), info));
 
             for (ClassInfo info : classes.values()) {
-                // Anonymous classes cant be created by a factory or default constructor. External classes are
+                // Anonymous classes can't be created by a factory or default constructor. External classes are
                 // superclasses outside of the scanned packages, ClassGraph reports them too
                 if (info.isAnonymousInnerClass() || info.isExternalClass()) {
                     continue;
@@ -140,7 +140,9 @@ public class InteractionSet {
     }
 
     /**
-     * Creates the interactions of the {@link EventProcess} / {@link RedirectedProcess} annotations
+     * Creates the interactions of a worker. A class level {@link RedirectedProcess} takes precedence,
+     * otherwise every declared {@link EventProcess} method is used (its type is derived from the method name,
+     * see {@link Type#fromFunctionName(String)}). {@link BypassGuildValidity} only works on {@link EventProcess} methods
      * @return the InteractionSet or null if the worker has no interactions
      */
     private static InteractionSet fromWorker(final Class<?> workerClass, final EventWorker worker, final Logger logger) {
@@ -183,9 +185,9 @@ public class InteractionSet {
     }
 
     /**
-     * Creates one InteractionSet per {@link CommandHandler} method, registered as guild and global slash event
+     * Creates one InteractionSet per declared {@link CommandHandler} method, registered as guild and global slash event
      * with the full command name as identifier, e.g. "ping" or "music play"
-     * @throws de.shurablack.core.event.ImplementationException if a handler doesnt fit its declaration
+     * @throws de.shurablack.core.event.ImplementationException if a handler doesn't fit its declaration
      */
     private static List<InteractionSet> fromCommandHandlers(final Class<?> workerClass, final Object instance,
                                                                final Map<String, SlashCommand> declarations, final Logger logger) {
@@ -217,16 +219,21 @@ public class InteractionSet {
     }
 
     /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * Discovers the interactions declared via annotations and creates the instances with their no-arg constructor.
      * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     * The scan covers all {@link EventWorker} subclasses ({@link EventProcess} methods or a {@link RedirectedProcess}
+     * class annotation) and all classes declaring {@link CommandHandler} methods, see {@link #fromAnnotation(Function)}.
+     * Message command identifiers get the {@link de.shurablack.core.event.handler.EventHandler#getPREFIX() prefix}
+     * that is set at the time of the call.
      *
      * @see EventProcess
      * @see RedirectedProcess
      * @see ExtendedEventProcess
+     * @see CommandHandler
      * @see DisabledWorker
      * @return the list of InteractionSets
+     * @throws RuntimeException if a discovered class has no accessible no-arg constructor or it throws
+     * @throws de.shurablack.core.event.ImplementationException if a {@link CommandHandler} doesn't fit its declaration
      */
     public static List<InteractionSet> fromAnnotation() {
         return internalFromAnnotation(cls -> {
@@ -239,15 +246,11 @@ public class InteractionSet {
     }
 
     /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * Discovers the interactions declared via annotations, like {@link #fromAnnotation()}, but lets the caller create
+     * the instances (e.g. a dependency injection container).
      * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
-     *
-     * @see EventProcess
-     * @see RedirectedProcess
-     * @see ExtendedEventProcess
-     * @see DisabledWorker
+     * Abstract, anonymous and {@link DisabledWorker} classes are skipped. A {@link CommandHandler} class doesn't have to
+     * extend {@link EventWorker}, a class can have both worker methods and {@link CommandHandler} methods (one instance).
      * <br><br>
      * Spring example, classes without a bean get skipped:
      * <pre>{@code
@@ -258,6 +261,11 @@ public class InteractionSet {
      * @param instanceFactory creates the instance of a discovered class (worker or class with {@link CommandHandler} methods)
      *                        instead of the default constructor. Returning null skips the class
      * @return the list of InteractionSets
+     * @throws de.shurablack.core.event.ImplementationException if a {@link CommandHandler} doesn't fit its declaration
+     *                                                          or the instance is an unsupported proxy
+     * @see EventProcess
+     * @see RedirectedProcess
+     * @see ExtendedEventProcess
      */
     public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> instanceFactory) {
         return internalFromAnnotation(instanceFactory);

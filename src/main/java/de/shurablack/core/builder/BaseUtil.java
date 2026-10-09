@@ -22,6 +22,13 @@ import java.util.function.Consumer;
  * <p>
  * Shared foundation of {@link JDAUtil} and {@link ShardUtil}: the command-line interface,
  * the default console commands and the shutdown handling.
+ * <br><br>
+ * Once the bot is ready ({@link #onReady()}), the commands are optionally uploaded, the default
+ * console commands ({@code force cron}, {@code reload local}, {@code upload}, {@code performance},
+ * {@code dispatcher}, {@code exit}) are registered and a console thread starts reading {@code System.in}.
+ * A line is passed to the first {@link CommandAction} whose name is a prefix of it.
+ * <br><br>
+ * The constructor registers a JVM shutdown hook which stops the {@link Dispatcher} and runs the exit task.
  * </p>
  *
  * @version core-1.1.0
@@ -33,25 +40,27 @@ public abstract class BaseUtil {
     /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseUtil.class);
 
-    /** Class to handle events of the discord bot */
+    /** Handler that dispatches the Discord events of the bot */
     private final EventHandler handler;
 
     /**
-     * List of {@link CommandAction} which represeting the available commands
+     * The {@link CommandAction}s available on the command-line interface, user actions first,
+     * followed by the defaults added in {@link #onReady()}
      */
     private final List<CommandAction> commandActions = new ArrayList<>();
 
-    /** Task which will be executed on exit */
+    /** Task executed on shutdown, null if none was set */
     private volatile Consumer<String> onExit;
 
     /** Guards the shutdown, so the exit command and the shutdown hook only run it once */
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    /** Guards {@link #onReady()}, so a repeated ready event doesnt start a second console */
+    /** Guards {@link #onReady()}, so a repeated ready event doesn't start a second console */
     private final AtomicBoolean commandLineStarted = new AtomicBoolean(false);
 
     /**
-     * @param handler the specified handler object
+     * Stores the handler and registers a JVM shutdown hook that runs the shutdown once
+     * @param handler the handler for the Discord events
      */
     BaseUtil(final EventHandler handler) {
         this.handler = handler;
@@ -59,22 +68,25 @@ public abstract class BaseUtil {
     }
 
     /**
-     * Uploads all interaction commands to discord
-     * @param onlyChanged true to skip commands which are already registered unchanged
+     * Uploads all annotated interaction commands to Discord, asynchronously
+     * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
+     * @see CommandUploadBuilder
      */
     abstract void uploadCommands(boolean onlyChanged);
 
     /**
-     * Adds a {@link CommandAction} object to the commandActions list and make it available
-     * @param action that should be added
+     * Makes a {@link CommandAction} available on the command-line interface.
+     * Not synchronized, intended to be called before the bot is ready
+     * @param action the action to add
      */
     void addAction(final CommandAction action) {
         this.commandActions.add(action);
     }
 
     /**
-     * Adds an shutdown task, which will be executed on calling the exit command or on JVM shutdown
-     * @param task the specified task, receives the exit command input (empty on JVM shutdown)
+     * Sets the shutdown task, executed once on the exit command or on JVM shutdown.
+     * Replaces a previously set task
+     * @param task the task, receives the exit command input (an empty string on JVM shutdown)
      */
     void addExitTask(final Consumer<String> task) {
         this.onExit = task;
@@ -82,7 +94,7 @@ public abstract class BaseUtil {
 
     /**
      * Stops the dispatcher and runs the exit task. Only the first call has an effect
-     * @param input the exit command input
+     * @param input the exit command input, empty when called by the shutdown hook
      */
     private void shutdown(final String input) {
         if (!shutdown.compareAndSet(false, true)) {
@@ -97,20 +109,20 @@ public abstract class BaseUtil {
     }
 
     /**
-     * Takes a string representing a command, and it returns an Optional<CommandAction> object
-     * containing the CommandAction object for the given command if it exists,
-     * or an empty Optional if the command does not exist.
+     * Finds the action for a command line. An action matches if the line starts with its name,
+     * the first match in registration order wins
      * @param input the command line input
-     * @return Optional with {@link CommandAction} or an empty Optional
+     * @return the matching {@link CommandAction}, or an empty Optional if none matches
      */
     private Optional<CommandAction> findCommand(final String input) {
         return commandActions.stream().filter(command -> input.startsWith(command.getName())).findAny();
     }
 
     /**
-     * Called once the bot is ready. Uploads the commands if "commands.auto-upload" is enabled in the config
-     * and starts a new thread that reads commands from the
-     * command-line interface and invokes the corresponding CommandAction objects.
+     * Called when the bot is ready, only the first call has an effect. Uploads the changed commands if
+     * "commands.auto-upload" is true in the config, registers the default console commands, prints the
+     * banner and starts the "Console_Thread" that reads {@code System.in} and invokes the matching
+     * {@link CommandAction}s. Exceptions thrown by an action are logged and don't stop the console.
      */
     void onReady() {
         if (!commandLineStarted.compareAndSet(false, true)) {
@@ -205,9 +217,7 @@ public abstract class BaseUtil {
         }, "Console_Thread").start();
     }
 
-    /**
-     * @return the EventHandler object
-     */
+    /** @return the {@link EventHandler} of the bot */
     public EventHandler getHandler() {
         return handler;
     }

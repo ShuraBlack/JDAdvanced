@@ -15,29 +15,29 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * The UtilBuilder class is a Java class that provides a way to create
- * and configure a {@link JDAUtil} object, which can be used to interact with a Discord bot
+ * Creates and configures a {@link JDAUtil}, which wraps a single (unsharded) Discord bot.
+ * For sharded bots use the {@link ShardUtilBuilder}.
  * <br><br>
  * Example:
  * </p>
  * <pre>{@code
- * // Initialize the UtilBuilder
- * UtilBuilder.init();
+ * // Load the config and initialize the library, restricting the classpath scans to your packages
+ * UtilBuilder.init("de.mybot");
  *
  * // Create a JDABuilder object to build the Discord bot
  * JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
  *
  * // Create an EventHandler object to handle events in the Discord bot
- * EventHandler handler = createEventHandler();
+ * EventHandler handler = NativeEventHandler.createDefault();
  *
- * // Use the UtilBuilder to create a JDAUtil object for the Discord bot
+ * // Use the UtilBuilder to create a JDAUtil object for the Discord bot (starts the login)
  * JDAUtil util = UtilBuilder.create(builder, handler)
  *     // Add some command-line actions to the JDAUtil object
  *     .setCommandLineAction(
  *         new CommandAction("say-hello", "Says 'Hello, World!'", (String args) -> System.out.println("Hello, World!")),
  *         new CommandAction("say-goodbye", "Says 'Goodbye, World!'", (String args) -> System.out.println("Goodbye, World!"))
  *     )
- *     // Build and return the JDAUtil object
+ *     // Return the JDAUtil object
  *     .build();
  * }</pre>
  *
@@ -50,16 +50,17 @@ public class UtilBuilder {
     /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(UtilBuilder.class);
 
-    /** Flag that indicates whether the {@link Config} has been initialized */
+    /** Flag that indicates whether {@link #init()} has completed */
     private static boolean INIT = false;
 
-    /** {@link JDAUtil} which gets build */
+    /** {@link JDAUtil} which gets configured */
     private final JDAUtil JDAUtil;
 
     /**
      * Same as {@link #init()}, but restricts the classpath scans (event workers, cron tasks, commands)
-     * to the given packages. Scanning only your own packages speeds up the startup
-     * @param basePackages the packages of your bot, e.g. "de.mybot"
+     * to the given packages and their sub packages. Scanning only your own packages speeds up the startup
+     * @param basePackages the packages of your bot, e.g. "de.mybot"; none scans the whole classpath
+     * @throws InitException if the initialization fails, see {@link #init()}
      */
     public static void init(final String... basePackages) {
         ClassScan.setPackages(basePackages);
@@ -67,8 +68,11 @@ public class UtilBuilder {
     }
 
     /**
-     * This static method initializes the UtilBuilder by loading the configuration properties
-     * from the "config.properties" file and initializing the {@link AssetPool} and {@link de.shurablack.core.util.LocalData} classes
+     * Initializes the library: loads the "config.properties" file from the working directory, starts the
+     * {@link de.shurablack.core.scheduling.Dispatcher} and initializes the {@link AssetPool} and
+     * {@link de.shurablack.core.util.LocalData}. Must be called before {@link #create(JDABuilder, EventHandler)}.
+     * The classpath scans cover the whole classpath unless restricted via {@link #init(String...)}
+     * @throws InitException if the config file or its access_token is missing, or the LocalData folder can't be created
      */
     public static void init() {
         LOGGER.info("UtilBuilder initialization started");
@@ -80,15 +84,12 @@ public class UtilBuilder {
         INIT = true;
     }
 
-    /**
-     * @return true if {@link #init()} has been called
-     */
+    /** @return true if {@link #init()} has completed successfully */
     static boolean isInitialized() {
         return INIT;
     }
 
     /**
-     * This is the constructor for the UtilBuilder class
      * @param util the created {@link JDAUtil} object
      */
     UtilBuilder(final JDAUtil util) {
@@ -96,9 +97,10 @@ public class UtilBuilder {
     }
 
     /**
-     *  This is a static factory method that creates a new UtilBuilder object for building a {@link JDAUtil}.
-     *  It uses the default EventHandler and a default JDABuilder with the token from {@link Config}
+     * Creates a builder with a {@link NativeEventHandler#createDefault()} handler and a
+     * {@link JDABuilder#createDefault(String)} using the access_token from the {@link Config}
      * @return the builder for chaining
+     * @throws InitException if {@link #init()} wasn't called before
      */
     public static UtilBuilder createDefault() {
         final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
@@ -107,10 +109,12 @@ public class UtilBuilder {
     }
 
     /**
-     *  This is a static factory method that creates a new UtilBuilder object for building a {@link JDAUtil}
-     * @param builder the builder for the {@link net.dv8tion.jda.api.JDA}
-     * @param handler the specified {@link EventHandler}
+     * Builds the {@link net.dv8tion.jda.api.JDA} instance (the login starts asynchronously) and creates a
+     * builder for the {@link JDAUtil} wrapping it
+     * @param builder the configured {@link JDABuilder}
+     * @param handler the handler for the Discord events
      * @return the builder for chaining
+     * @throws InitException if {@link #init()} wasn't called before
      */
     public static UtilBuilder create(final JDABuilder builder, final EventHandler handler) {
         if (!INIT) {
@@ -120,8 +124,9 @@ public class UtilBuilder {
     }
 
     /**
-     * Adds an task which will be executed on application exit
-     * @param task the specified task
+     * Sets the task executed once on application exit (exit console command or JVM shutdown).
+     * Replaces a previously set task
+     * @param task the task, receives the exit command input (an empty string on JVM shutdown)
      * @return the builder for chaining
      */
     public UtilBuilder addOnExit(Consumer<String> task) {
@@ -130,10 +135,9 @@ public class UtilBuilder {
     }
 
     /**
-     * Adds one or more {@link CommandAction} objects to the JDAUtil object that is being built by this UtilBuilder.
-     * <br><br>
-     * These CommandAction objects define actions that can be performed using the command-line interface
-     * @param commands the specified {@link CommandAction}
+     * Adds {@link CommandAction}s to the command-line interface. They are checked before the
+     * default console commands, so a name that prefixes a default command shadows it
+     * @param commands the actions to add
      * @return the builder for chaining
      */
     public UtilBuilder setCommandLineAction(final CommandAction... commands) {
@@ -144,10 +148,9 @@ public class UtilBuilder {
     }
 
     /**
-     * This method builds and returns the JDAUtil object that is being constructed by this UtilBuilder.
-     * <br><br>
-     * The command line interface will be started on a successful connection to the Discord bot API.
-     * @return the build {@link JDAUtil}
+     * Returns the configured JDAUtil. The bot is already logging in since the create call, the
+     * command-line interface starts once it is ready
+     * @return the built {@link JDAUtil}
      */
     public JDAUtil build() {
         return this.JDAUtil;

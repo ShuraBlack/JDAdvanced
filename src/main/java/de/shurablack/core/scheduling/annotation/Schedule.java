@@ -7,15 +7,13 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Annotation to mark a method as a scheduled task.
+ * Marks a method as a cron task with its scheduling pattern and name.
  * </p>
  *
  * <p>
- * This annotation is used to specify the scheduling pattern and name for a method that should be executed on a schedule.
- * </p>
- *
- * <p>
- * The containing class needs to annotate {@link ScheduleClass} to be discoverable.
+ * The method must be static and parameterless, and the containing class must be annotated with
+ * {@link ScheduleClass}. Such methods are scheduled by
+ * {@link de.shurablack.core.scheduling.Dispatcher#discoverCronTasks() Dispatcher#discoverCronTasks()}.
  * </p>
  *
  * @version core-1.1.1
@@ -25,6 +23,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Schedule {
+    /** @return the cron4j scheduling pattern, e.g. "0 8 * * *" for every day at 08:00 */
     String pattern();
+    /** @return the task name, used to deschedule or force the task via the Dispatcher */
     String name();
 }

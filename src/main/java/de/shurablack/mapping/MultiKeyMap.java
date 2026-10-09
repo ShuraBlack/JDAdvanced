@@ -4,9 +4,10 @@ import java.util.*;
 
 /**
  * <p>
- * The MultiKeyMap class is a generic implementation of a map that allows multiple keys to be associated with a single value.
+ * A {@link HashMap}-backed {@link Map} that additionally keeps a reverse index from each value to the keys
+ * mapped to it, so all keys sharing a value can be looked up with {@link #getKeys(Object)}.
  * <br><br>
- * It extends the Map interface and provides methods for adding, removing, and accessing elements in the map.
+ * Not thread-safe.
  * </p>
  *
  * @param <K> is the type of the keys
@@ -18,22 +19,14 @@ import java.util.*;
  */
 public class MultiKeyMap<K, V> implements Map<K, V> {
 
-    /**
-     * The underlying map implementation used by the MultiKeyMap class.
-     * <br><br>
-     * It stores the mapping from keys to values.
-     */
+    /** The mapping from keys to values */
     private final Map<K, V> map;
 
-    /**
-     * A reverse mapping from values to lists of keys.
-     * It is used to store the list of keys associated with each value in the map.
-     */
+    /** The reverse mapping from each value to the keys that were put with it */
     private final Map<V, List<K>> reverseMap;
 
     /**
-     * This is the constructor for the MultiKeyMap class.
-     * It initializes the map and reverseMap fields using a HashMap implementation.
+     * Creates an empty map.
      */
     public MultiKeyMap() {
         map = new HashMap<>();
@@ -65,6 +58,12 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
         return map.get(key);
     }
 
+    /**
+     * Maps the key to the value and adds the key to the value's key list.
+     * <br><br>
+     * The key isn't removed from the key list of a previous value, and putting the same pair twice
+     * adds the key twice.
+     */
     @Override
     public V put(final K key, final V value) {
         final List<K> keys = reverseMap.computeIfAbsent(value, k -> new ArrayList<>());
@@ -73,6 +72,7 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
         return map.put(key, value);
     }
 
+    /** Removes the key from the map and from the key list of its value. */
     @Override
     public V remove(final Object key) {
         final V value = map.get(key);
@@ -84,6 +84,7 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
         return map.remove(key);
     }
 
+    /** Calls {@link #put(Object, Object)} for every entry. */
     @Override
     public void putAll(final Map<? extends K, ? extends V> m) {
         for (Entry<? extends K, ? extends V> entry : m.entrySet()) {
@@ -91,6 +92,7 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
         }
     }
 
+    /** Removes all mappings, including the reverse index. */
     @Override
     public void clear() {
         map.clear();
@@ -113,9 +115,9 @@ public class MultiKeyMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Returns a list of all keys associated with the specified value
+     * Returns all keys associated with the specified value.
      * @param value the specified value
-     * @return a list if K objects
+     * @return the live list of keys, or {@code null} if the value was never put; may be empty after removals
      */
     public List<K> getKeys(final V value) {
         return reverseMap.get(value);

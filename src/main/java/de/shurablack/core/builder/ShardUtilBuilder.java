@@ -10,30 +10,29 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * The ShardUtilBuilder class is a Java class that provides a way to create
- * and configure a {@link ShardUtil} object, which can be used to interact with a Discord bot
- * on multiple shards.
+ * Creates and configures a {@link ShardUtil}, which wraps a Discord bot running on multiple shards.
+ * The initialization is shared with the {@link UtilBuilder}.
  * <br><br>
  * Example:
  * </p>
  * <pre>{@code
- * // Initialize the ShardUtilBuilder
- * UtilBuilder.init();
+ * // Load the config and initialize the library, restricting the classpath scans to your packages
+ * ShardUtilBuilder.init("de.mybot");
  *
  * // Create a ShardManagerBuilder object to build the Discord bot
  * DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(Config.getConfig("access_token"));
  *
  * // Create an EventHandler object to handle events in the Discord bot
- * EventHandler handler = createEventHandler();
+ * EventHandler handler = NativeEventHandler.createDefault();
  *
- * // Use the ShardUtilBuilder to create a ShardUtil object for the Discord bot
+ * // Use the ShardUtilBuilder to create a ShardUtil object for the Discord bot (starts the login)
  * ShardUtil util = ShardUtilBuilder.create(builder, handler)
  *     // Add some command-line actions to the object
  *     .setCommandLineAction(
  *         new CommandAction("say-hello", "Says 'Hello, World!'", (String args) -> System.out.println("Hello, World!")),
  *         new CommandAction("say-goodbye", "Says 'Goodbye, World!'", (String args) -> System.out.println("Goodbye, World!"))
  *     )
- *     // Build and finish the object
+ *     // Return the ShardUtil object
  *     .build();
  * }</pre>
  *
@@ -43,12 +42,13 @@ import java.util.function.Consumer;
  */
 public class ShardUtilBuilder {
 
-    /** {@link ShardUtil} which gets build */
+    /** {@link ShardUtil} which gets configured */
     private final ShardUtil shardUtil;
 
     /**
-     * Same as {@link #init()}, but restricts the classpath scans to the given packages
-     * @param basePackages the packages of your bot, e.g. "de.mybot"
+     * Same as {@link #init()}, but restricts the classpath scans to the given packages and their sub packages
+     * @param basePackages the packages of your bot, e.g. "de.mybot"; none scans the whole classpath
+     * @throws InitException if the initialization fails, see {@link UtilBuilder#init()}
      * @see UtilBuilder#init(String...)
      */
     public static void init(final String... basePackages) {
@@ -56,15 +56,18 @@ public class ShardUtilBuilder {
     }
 
     /**
-     * This static method initializes the ShardUtilBuilder by loading the configuration properties
-     * from the "config.properties" file and initializing the {@link AssetPool} and {@link de.shurablack.core.util.LocalData} classes
+     * Initializes the library: loads the "config.properties" file from the working directory, starts the
+     * {@link de.shurablack.core.scheduling.Dispatcher} and initializes the {@link AssetPool} and
+     * {@link de.shurablack.core.util.LocalData}. Must be called before {@link #create(DefaultShardManagerBuilder, EventHandler)}.
+     * The classpath scans cover the whole classpath unless restricted via {@link #init(String...)}
+     * @throws InitException if the config file or its access_token is missing, or the LocalData folder can't be created
+     * @see UtilBuilder#init()
      */
     public static void init() {
         UtilBuilder.init();
     }
 
     /**
-     * This is the constructor for the ShardUtilBuilder class
      * @param util the created {@link ShardUtil} object
      */
     ShardUtilBuilder(final ShardUtil util) {
@@ -72,9 +75,10 @@ public class ShardUtilBuilder {
     }
 
     /**
-     *  This is a static factory method that creates a new ShardUtil object for building a {@link net.dv8tion.jda.api.sharding.ShardManager}.
-     *  It uses the default EventHandler and a default DefaultShardManagerBuilder with the token from {@link Config}
+     * Creates a builder with a {@link NativeEventHandler#createDefault()} handler and a
+     * {@link DefaultShardManagerBuilder#createDefault(String)} using the access_token from the {@link Config}
      * @return the builder for chaining
+     * @throws InitException if {@link #init()} wasn't called before
      */
     public static ShardUtilBuilder createDefault() {
         final DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(Config.getConfig("access_token"));
@@ -83,10 +87,12 @@ public class ShardUtilBuilder {
     }
 
     /**
-     *  This is a static factory method that creates a new ShardUtil object for building a {@link JDAUtil}
-     * @param builder the builder for the {@link DefaultShardManagerBuilder}
-     * @param handler the specified {@link de.shurablack.core.event.handler.EventHandler}
+     * Builds the {@link net.dv8tion.jda.api.sharding.ShardManager} (the shards log in asynchronously) and
+     * creates a builder for the {@link ShardUtil} wrapping it
+     * @param builder the configured {@link DefaultShardManagerBuilder}
+     * @param handler the handler for the Discord events
      * @return the builder for chaining
+     * @throws InitException if {@link #init()} wasn't called before
      */
     public static ShardUtilBuilder create(final DefaultShardManagerBuilder builder, final EventHandler handler) {
         if (!UtilBuilder.isInitialized()) {
@@ -96,8 +102,9 @@ public class ShardUtilBuilder {
     }
 
     /**
-     * Adds an task which will be executed on application exit
-     * @param task the specified task
+     * Sets the task executed once on application exit (exit console command or JVM shutdown).
+     * Replaces a previously set task
+     * @param task the task, receives the exit command input (an empty string on JVM shutdown)
      * @return the builder for chaining
      */
     public ShardUtilBuilder addOnExit(Consumer<String> task) {
@@ -106,10 +113,9 @@ public class ShardUtilBuilder {
     }
 
     /**
-     * Adds one or more {@link CommandAction} objects to the ShardUtil object that is being built by this ShardUtilBuilder.
-     * <br><br>
-     * These CommandAction objects define actions that can be performed using the command-line interface
-     * @param commands the specified {@link CommandAction}
+     * Adds {@link CommandAction}s to the command-line interface. They are checked before the
+     * default console commands, so a name that prefixes a default command shadows it
+     * @param commands the actions to add
      * @return the builder for chaining
      */
     public ShardUtilBuilder setCommandLineAction(final CommandAction... commands) {
@@ -120,10 +126,9 @@ public class ShardUtilBuilder {
     }
 
     /**
-     * This method builds and returns the ShardUtil object that is being constructed by this ShardUtilBuilder.
-     * <br><br>
-     * The command line interface will be started on a successful connection to the Discord bot API.
-     * @return the build {@link ShardUtil}
+     * Returns the configured ShardUtil. The bot is already logging in since the create call, the
+     * command-line interface starts once it is ready
+     * @return the built {@link ShardUtil}
      */
     public ShardUtil build() {
         return this.shardUtil;

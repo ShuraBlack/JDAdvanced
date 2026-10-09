@@ -10,12 +10,12 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * <p>
- * This is a default/example class
+ * Default listener that forwards component and modal interactions to an {@link EventHandler}.
  * <br><br>
- * The DefaultInteractionReceiver class is a listener that listens for various types of interaction events
- * in a Discord chat server.
+ * Buttons, string select menus and entity select menus are forwarded with their component ID as identifier,
+ * modals with their modal ID. This is the only default listener that handles select menus.
  * <br><br>
- * It extends the ListenerAdapter class from the JDA library, which provides a simple way to create listeners for Discord events.
+ * Can be used as is or serve as an example for a custom {@link ListenerAdapter}.
  * </p>
  *
  * @version core-1.0.0
@@ -24,32 +24,36 @@ import org.jetbrains.annotations.NotNull;
  */
 public class DefaultInteractionReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
+    /** The {@link EventHandler} that receives all forwarded events */
     private final EventHandler handler;
 
     /**
-     * The constructor for the class
-     * @param handler the specified {@link de.shurablack.core.event.handler.EventHandler}
+     * Creates a new receiver.
+     * @param handler the {@link EventHandler} to forward the events to
      */
     public DefaultInteractionReceiver(EventHandler handler) {
         this.handler = handler;
     }
 
+    /** Forwards the modal submission to {@link EventHandler#onModalEvent}, using the modal ID as identifier. */
     @Override
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
         handler.onModalEvent(event.getModalId(), event);
     }
 
+    /** Forwards the button click to {@link EventHandler#onButtonEvent}, using the component ID as identifier. */
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         handler.onButtonEvent(event.getComponentId(), event);
     }
 
+    /** Forwards the string selection to {@link EventHandler#onStringSelectionMenuEvent}, using the component ID as identifier. */
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         handler.onStringSelectionMenuEvent(event.getComponentId(), event);
     }
 
+    /** Forwards the entity selection to {@link EventHandler#onEntitySelectionMenuEvent}, using the component ID as identifier. */
     @Override
     public void onEntitySelectInteraction(@NotNull EntitySelectInteractionEvent event) {
         handler.onEntitySelectionMenuEvent(event.getComponentId(), event);

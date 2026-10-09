@@ -26,19 +26,38 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * <p>
+ * Builds the interaction commands from the {@link SlashCommand} and {@link ContextCommand} annotations
+ * found by {@link ClassScan} and uploads them to Discord.
+ * <br><br>
+ * Commands with the guild ID "GLOBAL" (the default) are registered globally, all others on the guild
+ * with the given ID. Each upload replaces the full command list of its target (global or guild), so
+ * commands missing locally get deleted at Discord. Targets without any local command are not touched.
+ * All uploads are queued asynchronously, results are only logged.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class CommandUploadBuilder {
 
+    /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandUploadBuilder.class);
 
     private CommandUploadBuilder() {
         // Private constructor to prevent instantiation
     }
 
+    /**
+     * Uploads all commands, regardless of whether they changed
+     * @param jda the bot
+     */
     public static void uploadInteractionCommands(JDA jda) {
         uploadInteractionCommands(jda, false);
     }
 
     /**
+     * Uploads the commands via a single {@link JDA} instance. Guilds are looked up in its cache
      * @param jda the bot
      * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
      */
@@ -47,7 +66,8 @@ public class CommandUploadBuilder {
     }
 
     /**
-     * Uploads via the ready shards. Guilds are looked up across all shards
+     * Uploads the commands via the shards of a {@link ShardManager}. Global commands are registered via the
+     * first shard, guilds are looked up across all shards
      * @param manager the {@link ShardManager} with all shards ready
      * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
      */
@@ -56,6 +76,13 @@ public class CommandUploadBuilder {
         upload(manager.getShards().get(0), manager::getGuildById, onlyChanged);
     }
 
+    /**
+     * Uploads the global commands via the given bot and the guild commands via the looked up guilds.
+     * Unknown guilds are skipped with a warning
+     * @param jda the bot used for the global commands
+     * @param guilds resolves a guild ID to the guild, null if unknown
+     * @param onlyChanged true to skip targets whose commands are already registered unchanged
+     */
     private static void upload(JDA jda, Function<String, Guild> guilds, boolean onlyChanged) {
         Map<String, List<CommandData>> commands = buildCommands();
 
@@ -75,6 +102,14 @@ public class CommandUploadBuilder {
         }
     }
 
+    /**
+     * Sends the commands of one target, or first compares them with the registered ones if onlyChanged is set
+     * @param target the target name used in the log messages
+     * @param local the locally built commands
+     * @param update the update action of the target, replaces all its commands
+     * @param registered retrieves the commands currently registered for the target
+     * @param onlyChanged true to skip the upload if the registered commands are equal
+     */
     private static void push(String target, List<CommandData> local, CommandListUpdateAction update,
                              RestAction<List<Command>> registered, boolean onlyChanged) {
         if (!onlyChanged) {
@@ -91,6 +126,12 @@ public class CommandUploadBuilder {
         }, e -> LOGGER.error("Failed to retrieve registered commands for {}!", target, e));
     }
 
+    /**
+     * Queues the update action with the given commands
+     * @param target the target name used in the log messages
+     * @param local the commands to register
+     * @param update the update action of the target
+     */
     private static void send(String target, List<CommandData> local, CommandListUpdateAction update) {
         LOGGER.info("Registering {} commands for {}...", local.size(), target);
         update.addCommands(local).queue(
@@ -100,6 +141,8 @@ public class CommandUploadBuilder {
 
     /**
      * Compares the serialized commands, independent of command and field order
+     * @param registered the commands registered at Discord
+     * @param local the locally built commands
      * @return true if both lists describe the same commands
      */
     static boolean isUpToDate(List<CommandData> registered, List<CommandData> local) {
@@ -116,10 +159,19 @@ public class CommandUploadBuilder {
         return true;
     }
 
+    /**
+     * @param data the command
+     * @return the command serialized like it is sent to Discord
+     */
     private static JSONObject toJson(CommandData data) {
         return new JSONObject(data.toData().toString());
     }
 
+    /**
+     * Builds the command data of all classes annotated with {@link SlashCommand} or {@link ContextCommand}.
+     * If any command is invalid or the scan fails, the error is logged and an empty map is returned
+     * @return a mutable map from guild ID ("GLOBAL" for global commands) to its commands
+     */
     public static Map<String, List<CommandData>> buildCommands() {
         Map<String, List<CommandData>> commands = new HashMap<>();
 
@@ -156,6 +208,11 @@ public class CommandUploadBuilder {
         return commands;
     }
 
+    /**
+     * @param command the annotation
+     * @return the slash command data, including sub commands, options, localizations and permissions
+     * @throws IllegalArgumentException if a name/description is blank or both options and sub commands are set
+     */
     private static SlashCommandData extractSlashCommand(SlashCommand command) {
         validateNotBlank(command.name(), "Slash command name");
         validateNotBlank(command.description(), "Slash command description");
@@ -182,6 +239,11 @@ public class CommandUploadBuilder {
         return data;
     }
 
+    /**
+     * @param command the annotation
+     * @return the context menu command data
+     * @throws IllegalArgumentException if the name is blank or the type is null
+     */
     private static CommandData extractContextCommand(ContextCommand command) {
         validateNotBlank(command.name(), "Context command name");
         if (command.type() == null)
@@ -201,6 +263,11 @@ public class CommandUploadBuilder {
         return data;
     }
 
+    /**
+     * Adds the sub commands to the slash command
+     * @param data the slash command
+     * @param subCommands the sub command annotations, may be empty
+     */
     private static void extractSubCommand(SlashCommandData data, SubCommand[] subCommands) {
         List<SubcommandData> subDataList = new ArrayList<>(subCommands.length);
         for (SubCommand subCommand : subCommands) {
@@ -219,6 +286,11 @@ public class CommandUploadBuilder {
         data.addSubcommands(subDataList);
     }
 
+    /**
+     * Converts the option annotations. A value of -1 for maxValue, minValue or maxLength means unset
+     * @param options the option annotations
+     * @return the option data in the same order
+     */
     private static List<OptionData> extractOptionData(CommandOption[] options) {
         List<OptionData> optionData = new ArrayList<>(options.length);
 
@@ -253,12 +325,22 @@ public class CommandUploadBuilder {
         return optionData;
     }
 
+    /**
+     * @param value the value to check
+     * @param fieldName the name used in the exception message
+     * @throws IllegalArgumentException if the value is null or blank
+     */
     private static void validateNotBlank(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " cannot be null, blank, or empty!");
         }
     }
 
+    /**
+     * Passes each localized text to the setter
+     * @param localizationSetter e.g. the name or description localization setter
+     * @param localizations the localized texts
+     */
     private static void addLocalizations(BiConsumer<DiscordLocale, String> localizationSetter, LocalizedText[] localizations) {
         for (LocalizedText localizedText : localizations) {
             localizationSetter.accept(localizedText.locale(), localizedText.value());

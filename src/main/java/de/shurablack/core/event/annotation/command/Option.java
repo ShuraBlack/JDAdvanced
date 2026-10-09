@@ -8,12 +8,16 @@ import java.lang.annotation.Target;
 /**
  * <p>
  * Injects the value of a slash command option into a {@link CommandHandler} parameter.
- * Options which werent provided are null, primitive parameters are only allowed for required options.
+ * Options which weren't provided are null, so primitive parameters are only allowed for required options.
  * <br><br>
- * Supported types (option type in brackets):
+ * Supported types (accepted option types in brackets):
  * String (STRING), Integer/int and Long/long (INTEGER), Double/double (NUMBER, INTEGER), Boolean/boolean (BOOLEAN),
  * User and Member (USER, MENTIONABLE), Role (ROLE, MENTIONABLE), IMentionable (MENTIONABLE, USER, ROLE),
- * GuildChannel and GuildChannelUnion (CHANNEL), Message.Attachment (ATTACHMENT)
+ * GuildChannel and GuildChannelUnion (CHANNEL), Message.Attachment (ATTACHMENT).
+ * <br><br>
+ * Unsupported parameter types throw an {@link de.shurablack.core.event.ImplementationException ImplementationException}
+ * on discovery. If the command is declared via {@link SlashCommand}, the option name, the option type and the
+ * primitive rule are checked as well.
  * </p>
  *
  * @version core-1.1.0

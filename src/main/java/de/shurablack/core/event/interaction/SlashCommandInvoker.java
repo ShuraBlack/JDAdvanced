@@ -39,7 +39,11 @@ import java.util.function.Function;
  * Calls a {@link CommandHandler} method. The parameter resolvers are built and validated once on registration,
  * so a mismatch between handler and {@link SlashCommand} declaration fails on startup instead of on the first use.
  * <br><br>
- * Its an {@link EventWorker}, so the event handlers apply cooldowns, channel restrictions and permissions as usual.
+ * It's an {@link EventWorker}, so the event handlers apply cooldowns, channel restrictions and permissions as usual.
+ * <br><br>
+ * Parameters annotated with {@link Option} get the converted option value (null if the option is missing),
+ * all other parameters get injected from the event ({@link SlashCommandInteractionEvent}, {@link Member}, {@link User},
+ * {@link Guild}, {@link MessageChannelUnion}, {@link DiscordLocale}).
  * </p>
  *
  * @version core-1.1.0
@@ -59,8 +63,10 @@ final class SlashCommandInvoker extends EventWorker {
         }
     }
 
+    /** Supported {@link Option} parameter types */
     private static final Map<Class<?>, Converter> CONVERTERS = new HashMap<>();
 
+    /** Supported parameter types without {@link Option}, resolved from the event */
     private static final Map<Class<?>, Function<SlashCommandInteractionEvent, Object>> CONTEXT = new HashMap<>();
 
     static {
@@ -84,6 +90,7 @@ final class SlashCommandInvoker extends EventWorker {
         CONTEXT.put(DiscordLocale.class, SlashCommandInteractionEvent::getUserLocale);
     }
 
+    /** Registers the converter for all given parameter types */
     private static void converter(final Converter converter, final Class<?>... types) {
         for (Class<?> type : types) {
             CONVERTERS.put(type, converter);
@@ -106,12 +113,14 @@ final class SlashCommandInvoker extends EventWorker {
     }
 
     /**
-     * Builds the invoker and validates the parameters against the declaration
+     * Builds the invoker and validates the parameters against the declaration. Makes the method accessible
      * @param target the instance which declares the method
      * @param method the {@link CommandHandler} method
-     * @param declaration the {@link SlashCommand} with the same name, null if it isnt declared via annotation (no validation)
+     * @param declaration the {@link SlashCommand} with the same name, null if it isn't declared via annotation
+     *                    (only the parameter types are checked then)
      * @return the invoker
-     * @throws ImplementationException if a parameter doesnt fit the declaration or isnt supported
+     * @throws ImplementationException if a parameter doesn't fit the declaration or isn't supported,
+     *                                 or the instance is an unsupported proxy
      */
     static SlashCommandInvoker create(final Object target, final Method method, final SlashCommand declaration) {
         final CommandHandler handler = method.getAnnotation(CommandHandler.class);
@@ -132,8 +141,9 @@ final class SlashCommandInvoker extends EventWorker {
     }
 
     /**
-     * Instances from a dependency injection container can be proxies. Interface based proxies arent instances of the class,
-     * and subclass proxies (e.g. Spring CGLIB) dont intercept non-public methods, so those would run on the empty proxy fields
+     * Instances from a dependency injection container can be proxies. Interface based proxies aren't instances of the class,
+     * and subclass proxies (e.g. Spring CGLIB) don't intercept non-public methods, so those would run on the empty proxy fields
+     * @throws ImplementationException if the instance isn't of the declaring class, or is a subclass and the method isn't public
      */
     private static void checkInstance(final Object target, final Method method, final String where) {
         final Class<?> declaring = method.getDeclaringClass();
@@ -148,6 +158,7 @@ final class SlashCommandInvoker extends EventWorker {
     }
 
     /**
+     * @param handler the annotation of the handler method
      * @return the full command name, e.g. "ping" or "music play"
      */
     static String commandName(final CommandHandler handler) {
@@ -155,7 +166,9 @@ final class SlashCommandInvoker extends EventWorker {
     }
 
     /**
-     * @return the options of the command or of the sub command the handler belongs to
+     * @return the options of the command or of the subcommand the handler belongs to
+     * @throws ImplementationException if the command has subcommands but the handler sets none,
+     *                                 or the subcommand isn't declared
      */
     private static CommandOption[] declaredOptions(final CommandHandler handler, final SlashCommand declaration, final String where) {
         if (handler.sub().isEmpty()) {
@@ -170,6 +183,10 @@ final class SlashCommandInvoker extends EventWorker {
                 .options();
     }
 
+    /**
+     * @return the resolver of a parameter without {@link Option}, taken from the event
+     * @throws ImplementationException if the parameter type can't be injected
+     */
     private static Function<SlashCommandInteractionEvent, Object> contextResolver(final Parameter parameter, final String where) {
         final Function<SlashCommandInteractionEvent, Object> resolver = CONTEXT.get(parameter.getType());
         if (resolver == null) {
@@ -179,6 +196,13 @@ final class SlashCommandInvoker extends EventWorker {
         return resolver;
     }
 
+    /**
+     * Creates the resolver of an {@link Option} parameter, which returns null if the option is missing.
+     * With a declaration, the option must exist, its type must be convertible and optional options need a wrapper type
+     * @param declared the declared options, null to skip the checks against the declaration
+     * @return the resolver
+     * @throws ImplementationException if the parameter type isn't supported or doesn't fit the declaration
+     */
     private static Function<SlashCommandInteractionEvent, Object> optionResolver(final Parameter parameter, final String name,
                                                                                final CommandOption[] declared, final String where) {
         final Class<?> type = parameter.getType();
@@ -209,6 +233,7 @@ final class SlashCommandInvoker extends EventWorker {
     /**
      * Resolves the parameters and calls the handler method
      * @param event the slash command event
+     * @throws RuntimeException the exception of the handler itself (checked ones wrapped in an {@link IllegalStateException})
      */
     void invoke(final SlashCommandInteractionEvent event) {
         final Object[] args = new Object[resolvers.size()];
@@ -232,11 +257,13 @@ final class SlashCommandInvoker extends EventWorker {
         }
     }
 
+    /** Calls the handler method, the other arguments are resolved from the event */
     @Override
     public void processGuildSlashEvent(final Member member, final MessageChannelUnion channel, final String name, final SlashCommandInteractionEvent event) {
         invoke(event);
     }
 
+    /** Calls the handler method, the other arguments are resolved from the event */
     @Override
     public void processGlobalSlashEvent(final User user, final PrivateChannel channel, final String name, final SlashCommandInteractionEvent event) {
         invoke(event);

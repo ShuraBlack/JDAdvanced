@@ -7,16 +7,19 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Annotation to define the redirected process for a class.
+ * Declares the interactions of an {@link de.shurablack.core.event.EventWorker EventWorker} on class level,
+ * each one as an {@link ExtendedEventProcess}. The worker gets discovered by
+ * {@link de.shurablack.core.event.interaction.InteractionSet#fromAnnotation()}.
+ * <br><br>
+ * If present, {@link EventProcess} annotations on the methods of the class are ignored.
  * </p>
- *
- * <p>
- * This annotation is used to specify the extended event processes for a class.
- * </p>
- *
- * <p>
- * It can only be used in conjunction with the {@link ExtendedEventProcess} annotation.
- * </p>
+ * <pre>{@code
+ * @RedirectedProcess({
+ *      @ExtendedEventProcess(identifier = "confirm", type = Type.BUTTON),
+ *      @ExtendedEventProcess(identifier = "feedback", type = Type.MODAL, userCooldown = 30)
+ * })
+ * public class Worker extends EventWorker { ... }
+ * }</pre>
  *
  * @version core-1.1.0
  * @date 12.04.2025
@@ -25,5 +28,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface RedirectedProcess {
+
+    /**
+     * @return the interactions of the worker
+     */
     ExtendedEventProcess[] value();
 }

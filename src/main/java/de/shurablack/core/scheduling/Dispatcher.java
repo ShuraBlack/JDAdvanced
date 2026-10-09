@@ -19,12 +19,22 @@ import java.util.concurrent.*;
 
 /**
  * <p>
- * The Dispatcher class handles scheduling and dispatching of tasks using a combination of a scheduler
- * for time-based tasks and a service executor for asynchronous tasks.
+ * Static task execution: a cron4j {@link Scheduler} for time-based (cron) tasks and a thread pool
+ * ("service executor") for asynchronous tasks, e.g. the event handling.
  * <br><br>
- * It provides methods for scheduling and descheduling cron tasks, dispatching tasks to the service executor,
- * and retrieving information about the scheduled tasks.
+ * {@link #start()} must be called before {@link #dispatch(Runnable)} and the other executor methods;
+ * {@link de.shurablack.core.builder.UtilBuilder#init()} does that. Cron tasks are registered manually via
+ * {@link #scheduleCronTask(String, String, Runnable)} or found via {@link #discoverCronTasks()}, which
+ * is not called automatically.
+ * <br><br>
+ * Example:
  * </p>
+ * <pre>{@code
+ * Dispatcher.start();
+ * Dispatcher.dispatch(() -> System.out.println("async"));
+ * // every day at 08:00 (cron4j pattern)
+ * Dispatcher.scheduleCronTask("0 8 * * *", "daily_report", () -> System.out.println("report"));
+ * }</pre>
  *
  * @version core-1.0.0
  * @date 09.06.2023
@@ -32,24 +42,27 @@ import java.util.concurrent.*;
  */
 public class Dispatcher {
 
+    /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(Dispatcher.class);
 
-    /** The scheduler for time-based tasks*/
+    /** The scheduler for time-based tasks, started lazily by the first scheduled cron task */
     private static final Scheduler SCHEDULER = new Scheduler();
 
-    /** The service executor for asynchronous tasks*/
+    /** The service executor for asynchronous tasks, null until {@link #start()} is called */
     private static ThreadPoolExecutor SERVICE;
 
-    /** The list of scheduled tasks */
+    /** The scheduled cron tasks */
     private static final ConcurrentLinkedQueue<Entry> TASKS = new ConcurrentLinkedQueue<>();
 
     private Dispatcher() { }
 
     /**
-     * Method to start the service executor.
-     * <br>
-     * The service executor is a fixed thread pool with <code>dispatcher_thread_max</code> threads from the config
-     * (default: available processors * 2). Tasks beyond that wait in a queue instead of being discarded.
+     * Starts the service executor. Does nothing if it is already running (not thread-safe, call it once at startup).
+     * <br><br>
+     * The service executor is a fixed thread pool with <code>dispatcher_thread_max</code> threads from the
+     * {@link Config} (default: available processors * 2). Tasks beyond that wait in an unbounded queue instead
+     * of being discarded. Idle threads terminate after 10 minutes.
+     * @throws NumberFormatException if <code>dispatcher_thread_max</code> isn't a valid number
      */
     public static void start() {
         if (SERVICE != null) {
@@ -67,8 +80,10 @@ public class Dispatcher {
     }
 
     /**
-     * Method for dispatching a task to the service executor
-     * @param task the runnable task which will be executed in a seperate thread
+     * Executes a task asynchronously on the service executor. Exceptions thrown by the task are logged.
+     * @param task the task which will be executed in a separate thread
+     * @throws NullPointerException if {@link #start()} wasn't called
+     * @throws java.util.concurrent.RejectedExecutionException if the executor was shut down
      */
     public static void dispatch(final Runnable task) {
         // execute instead of submit: submit stores exceptions in a Future nobody reads, hiding every failure
@@ -82,7 +97,9 @@ public class Dispatcher {
     }
 
     /**
-     * Method to shut down the service executor and stop the scheduler
+     * Shuts down the service executor and stops the scheduler if it is running.
+     * <br><br>
+     * Already submitted tasks of the executor still run; the method doesn't wait for them.
      */
     public static void shutdownService() {
         SERVICE.shutdown();
@@ -95,10 +112,12 @@ public class Dispatcher {
     }
 
     /**
-     * Method to schedule a cron task
-     * @param timePattern defines the frequency of the task
-     * @param name defines a unique string
-     * @param task defines the runnable task
+     * Schedules a cron task and starts the scheduler if necessary. Invalid patterns are logged and skipped.
+     * <br><br>
+     * The task runs on a thread of the cron4j scheduler, not on the service executor.
+     * @param timePattern the cron4j scheduling pattern, e.g. "0 8 * * *" for every day at 08:00
+     * @param name the name to find the task again; should be unique, since lookups use the first match
+     * @param task the task to run
      */
     public static void scheduleCronTask(final String timePattern, final String name, final Runnable task) {
         if (!SCHEDULER.isStarted()) {
@@ -113,6 +132,13 @@ public class Dispatcher {
         }
     }
 
+    /**
+     * Scans the classes configured in {@link ClassScan} for {@link ScheduleClass} classes and schedules each
+     * of their {@link Schedule} methods via {@link #scheduleCronTask(String, String, Runnable)}.
+     * <br><br>
+     * The methods must be static and parameterless. Methods with parameters are logged and skipped;
+     * non-static methods are scheduled, but fail (logged) on every execution.
+     */
     public static void discoverCronTasks() {
         try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getClassesWithAnnotation(ScheduleClass.class);
@@ -131,7 +157,7 @@ public class Dispatcher {
                     if (schedule == null) {
                         continue;
                     }
-                    // method must be static and without parameter
+                    // Only the parameter count is checked here; a non-static method fails on invoke(null) at runtime
                     if (!Arrays.stream(method.getParameterTypes()).allMatch(p -> p.equals(Void.TYPE))) {
                         LOGGER.error("Method <\u001b[31m%s\u001b[0m> in class <\u001b[31m%s\u001b[0m> must be static and without parameter", method.getName(), workerClass.getName());
                         continue;
@@ -153,8 +179,8 @@ public class Dispatcher {
     }
 
     /**
-     * Method to deschedule a cron task
-     * @param name defines the unique string to find the task
+     * Deschedules the first cron task with the given name. Does nothing if no task matches.
+     * @param name the name of the task
      */
     public static void descheduleCronTask(final String name) {
         final Optional<Entry> entry = TASKS.stream().filter(e -> e.getName()
@@ -169,8 +195,9 @@ public class Dispatcher {
     }
 
     /**
-     * Method to force a cron task
-     * @param name defines the unique string to find the task
+     * Runs the first cron task with the given name immediately and synchronously on the calling thread.
+     * Logs an error if no task matches.
+     * @param name the name of the task
      */
     public static void forceCronTask(final String name) {
         final Optional<Entry> entry = TASKS.stream().filter(e -> e.getName()
@@ -184,31 +211,29 @@ public class Dispatcher {
     }
 
     /**
-     * Method to get the list of scheduled tasks
-     * @return a list of {@link Entry} objects
+     * @return the live queue of scheduled cron tasks as {@link Entry} objects (not a copy)
      */
     public static ConcurrentLinkedQueue<Entry> getTaskList() {
         return TASKS;
     }
 
     /**
-     * Method to get the thread pool executor
-     * @return the used {@link ThreadPoolExecutor} from {@link Executors#newFixedThreadPool(int)}
+     * @return the {@link ThreadPoolExecutor} of the service executor or null if {@link #start()} wasn't called
      */
     public static ThreadPoolExecutor getThreadPool() {
         return SERVICE;
     }
 
     /**
-     * Method to get the thread factory
-     * @return the used {@link ThreadFactory} for creating the threads
+     * @return the {@link ThreadFactory} of the service executor
+     * @throws NullPointerException if {@link #start()} wasn't called
      */
     public static ThreadFactory getThreadFactory() {
         return SERVICE.getThreadFactory();
     }
 
     /**
-     * Method to get information about the current status of the service executor
+     * Logs the current pool size and task counters of the service executor (INFO level).
      */
     public static void logStatus() {
         LOGGER.info("\nSize [Current {}, Maximum \033[0;33m{}\033[0m, Peak \033[0;31m{}\033[0m] " +

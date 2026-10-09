@@ -20,11 +20,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <br>
  *
  * <p>
- * The ShardUtil class is a Java class that provides a way to interact with a Discord bot
- * , as well as using a command-line interface
- * <br>
- * It can only be created via the {@link ShardUtilBuilder}.
- * <br>
+ * Wraps a {@link ShardManager} and provides the command-line interface of {@link BaseUtil}.
+ * The console starts once all shards fired their {@link ReadyEvent}.
+ * <br><br>
+ * It can only be created via the {@link ShardUtilBuilder}. The ShardManager is stored statically,
+ * so only one ShardUtil per application is supported.
  * </p>
  *
  * @see ShardUtilBuilder ShardUtilBuilder
@@ -37,19 +37,20 @@ public class ShardUtil extends BaseUtil {
     /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardUtil.class);
 
-    /** ShardManager which presents the discord bot */
+    /** The Discord bot, null until a ShardUtil was created */
     private static ShardManager SHARD_MANAGER;
 
     /**
-     * This is the constructor for the ShardUtil class
-     * @param manager the specified discord bot
-     * @param handler the specified hadler object
+     * Stores the manager and registers a listener that calls {@link #onReady()} once the ready events
+     * of all shards were received
+     * @param manager the Discord bot
+     * @param handler the handler for the Discord events
      */
     ShardUtil(final ShardManager manager, final EventHandler handler) {
         super(handler);
         SHARD_MANAGER = manager;
         SHARD_MANAGER.addEventListener(new ListenerAdapter() {
-            /** Shards fire their ready events concurrently */
+            /** Counts the ready events, atomic because the shards fire them concurrently */
             private final AtomicInteger readyShards = new AtomicInteger();
             @Override
             public void onReady(@NotNull ReadyEvent event) {
@@ -68,7 +69,9 @@ public class ShardUtil extends BaseUtil {
     }
 
     /**
-     * @return the {@link ShardManager} object which needs be link with {@link ShardUtilBuilder#create(net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder, EventHandler)}
+     * @return the {@link ShardManager} created by
+     * {@link ShardUtilBuilder#create(net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder, EventHandler)},
+     * null if no ShardUtil was created yet
      */
     public static ShardManager getShardManager() {
         return SHARD_MANAGER;

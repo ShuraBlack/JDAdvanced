@@ -36,9 +36,11 @@ import java.util.stream.Collectors;
 /**
  * <p>
  * Shared foundation of {@link NativeEventHandler} and {@link DispatchEventHandler}: registration,
- * validation (bots, channel restriction, cooldowns, admin bypass) and the routing to the {@link de.shurablack.core.event.EventWorker}.
+ * validation (bots, permissions, channel restriction, cooldowns, admin bypass) and the routing to the
+ * {@link de.shurablack.core.event.EventWorker}.
  * <br><br>
- * Subclasses only decide where the validated worker call runs, see {@link #execute(Type, String, Runnable)}.
+ * Subclasses only decide where the validation and the worker call run, see {@link #execute(Type, String, Runnable)}.
+ * The event calls are thread-safe, the registry is concurrent and the cooldown check is synchronized.
  * </p>
  *
  * @version core-1.1.0
@@ -65,9 +67,12 @@ public abstract class AbstractEventHandler extends EventHandler {
     /** Maps event types to maps of event identifier strings to Event objects */
     private final Map<Type, Map<String, Event>> events = new EnumMap<>(Type.class);
 
-    /** Maps a cooldown key (global: type+identifier, user: userId:type+identifier) to the time it expires */
+    /** Maps a cooldown key (global: type+identifier, user: userId:type+identifier) to its expiry time in epoch milliseconds */
     private final Map<String, Long> cooldowns = new HashMap<>();
 
+    /**
+     * Creates a handler with the default settings and an empty registry for every {@link Type}
+     */
     protected AbstractEventHandler() {
         for (Type t : Type.values()) {
             events.put(t, new ConcurrentHashMap<>());
@@ -75,7 +80,7 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Runs the validated worker call
+     * Runs the task, the subclass decides on which thread
      * @param type the interaction type
      * @param identifier the unique string of the event
      * @param task validates the event and calls the worker
@@ -84,6 +89,10 @@ public abstract class AbstractEventHandler extends EventHandler {
 
     /**
      * Applies the settings of the create factory methods
+     * @param prefix the prefix for message commands, null or empty for {@link EventHandler#DEFAULT_PREFIX}
+     * @param ignoreBotRequest whether events triggered by bots get rejected
+     * @param errorFeedback whether failed validations get an ephemeral error reply
+     * @param adminBypass whether administrators skip the channel restriction and cooldowns of guild events
      */
     void configure(final String prefix, final boolean ignoreBotRequest, final boolean errorFeedback, final boolean adminBypass) {
         EventHandler.setPREFIX(prefix);
@@ -93,8 +102,8 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Registers a set of events with the EventHandler object
-     * @param set of events which will be created
+     * Registers the interactions of the given sets, an already registered identifier of the same type gets replaced
+     * @param set the interaction sets, usually from {@link InteractionSet#fromAnnotation()}
      * @return the handler for chaining
      */
     @Override
@@ -106,8 +115,8 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Registers a single set of events
-     * @param os the events which will be created
+     * Creates an {@link Event} for every interaction of the set and logs the registered worker
+     * @param os the interactions and their worker
      */
     private void registerEventSubRoutine(final InteractionSet os) {
         for (Interaction o : os.getInteractions()) {
@@ -130,9 +139,10 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Checks both cooldowns before starting them, so a blocked call doesnt consume the other cooldown
+     * Checks both cooldowns before starting them, so a blocked call doesn't consume the other cooldown.
+     * If the call isn't blocked, the cooldowns of the event that are greater than 0 get started
      * @param key the type and identifier of the event
-     * @param userID the unique ID of an discord user
+     * @param userID the unique ID of the discord user
      * @param event the event object
      * @return true if there is a global or user cooldown still active
      */
@@ -157,12 +167,13 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Validates the call and runs the worker, otherwise sends the error feedback (if there is a callback)
-     * @param identifier is the unique {@link String} for the event
-     * @param type is the Type of the event
+     * Validates the call and runs the worker, otherwise sends the error feedback (if enabled and there is a callback).
+     * Both happen inside {@link #execute(Type, String, Runnable)}
+     * @param identifier the unique {@link String} for the event
+     * @param type the Type of the event
      * @param user the discord user who triggered the event
-     * @param member the guild member who triggered the event, null outside of guilds
-     * @param channelID is the ID of the channel
+     * @param member the guild member who triggered the event, null outside of guilds (selects the non-guild validation)
+     * @param channelID the ID of the channel
      * @param callback the reply callback for the error feedback, null for messages and reactions
      * @param worker calls the worker of the validated {@link Event}
      */
@@ -188,8 +199,9 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Prefers a {@link de.shurablack.core.event.annotation.command.CommandHandler} registration ("music play")
-     * over the registration of the whole command ("music")
+     * Prefers a registration of the full command name ("music play", e.g. by a
+     * {@link de.shurablack.core.event.annotation.command.CommandHandler}) over the registration of the command itself ("music")
+     * @return the identifier to look up
      */
     private String slashIdentifier(final Type type, final String identifier, final SlashCommandInteractionEvent event) {
         final String fullName = event.getFullCommandName();
@@ -223,7 +235,7 @@ public abstract class AbstractEventHandler extends EventHandler {
 
     @Override
     public void onPublicChannelEvent(final String identifier, final MessageReceivedEvent event) {
-        // member is null for webhook messages
+        // member is null for webhook messages, those get the non-guild validation
         handle(identifier, Type.PUBLIC_CHANNEL, event.getAuthor(), event.getMember(), event.getChannel().getId(), null,
                 e -> e.getWorker().processPublicChannelEvent(event.getMember(), event.getChannel()
                         , event.getMessage().getContentRaw().replace(identifier, ""), event));
@@ -282,11 +294,11 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Handles the auto complete event. There are no cooldowns or error embeds, because discord fires it
-     * on every keystroke and only accepts choices as reply
-     * @param identifier is the name of the command
-     * @param event is the original {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
-     *              of the {@link net.dv8tion.jda.api.JDA JDA}
+     * Handles the auto complete event. Only the registration and the channel restriction are checked
+     * (no bot check, permissions, cooldowns or error embeds), because discord fires it on every keystroke
+     * and only accepts choices as reply. A rejected call gets an empty choice list
+     * @param identifier the name of the command
+     * @param event the JDA event
      */
     @Override
     public void onAutoCompleteEvent(final String identifier, final CommandAutoCompleteInteractionEvent event) {
@@ -301,12 +313,13 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Gets the event worker for the given identifier, type, user and channel ID
-     * @param identifier is the unique {@link String} for the event
-     * @param type is the Type of the event
-     * @param user is a independent discord user object
-     * @param channelId is the ID of the channel which should be checked
-     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
+     * Runs the validation of a call without a guild member (bot check, registration, no required permissions,
+     * channel restriction, cooldowns). A successful call starts the cooldowns, like a real event would
+     * @param identifier the unique {@link String} for the event
+     * @param type the Type of the event
+     * @param user the discord user who triggered the event
+     * @param channelId the ID of the channel which should be checked
+     * @return the {@link ValidationEvent}, contains the {@link Event} if it's a valid request
      */
     @Override
     public ValidationEvent getEventWorker(final String identifier, final Type type, final User user, final String channelId) {
@@ -314,17 +327,19 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Checks if the call is valid or not.<br>
+     * Checks if a call without a guild member is valid, in this order:<br>
      * <ul>
+     *     <li>Not from a bot (if bot requests are ignored)</li>
      *     <li>Existing Event</li>
+     *     <li>No required permissions, they can't be checked without a member</li>
      *     <li>Allowed Channel</li>
-     *     <li>Isnt on cooldown</li>
+     *     <li>Isn't on cooldown (starts the cooldowns otherwise)</li>
      * </ul>
-     * @param identifier is the unique {@link String} for the event
-     * @param type is the Type of the event
-     * @param user is a independent discord user object
-     * @param channelID is the ID of the channel which should be checked
-     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
+     * @param identifier the unique {@link String} for the event
+     * @param type the Type of the event
+     * @param user the discord user who triggered the event
+     * @param channelID the ID of the channel which should be checked
+     * @return the {@link ValidationEvent}, contains the {@link Event} if it's a valid request
      */
     private ValidationEvent isValid(final String identifier, final Type type, final User user, final String channelID) {
         if (this.ignoreBotRequest && user.isBot()) {
@@ -352,18 +367,20 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
-     * Checks if the call is valid or not.<br>
+     * Checks if a call of a guild member is valid, in this order:<br>
      * <ul>
+     *     <li>Not from a bot (if bot requests are ignored)</li>
      *     <li>Existing Event</li>
      *     <li>Required permissions</li>
-     *     <li>Admin bypass or allowed channel (skipped for {@link de.shurablack.core.event.annotation.BypassGuildValidity})</li>
-     *     <li>Isnt on cooldown</li>
+     *     <li>Admin bypass (succeeds without the cooldown check) or allowed channel, both skipped
+     *     for {@link de.shurablack.core.event.annotation.BypassGuildValidity}</li>
+     *     <li>Isn't on cooldown (starts the cooldowns otherwise)</li>
      * </ul>
-     * @param identifier is the unique {@link String} for the event
-     * @param type is the Type of the event
-     * @param member is a guild discord user object
-     * @param channelID is the ID of the channel which should be checked
-     * @return the {@link ValidationEvent} contains the {@link Event} if its a valid request
+     * @param identifier the unique {@link String} for the event
+     * @param type the Type of the event
+     * @param member the guild member who triggered the event
+     * @param channelID the ID of the channel which should be checked
+     * @return the {@link ValidationEvent}, contains the {@link Event} if it's a valid request
      */
     private ValidationEvent isValidGuild(final String identifier, final Type type, final Member member, final String channelID) {
         if (this.ignoreBotRequest && member.getUser().isBot()) {
@@ -398,7 +415,8 @@ public abstract class AbstractEventHandler extends EventHandler {
 
     /**
      * Checks the permissions in the channel of the event (including channel overrides),
-     * falls back to the guild permissions if the channel isnt a guild channel
+     * falls back to the guild permissions if the channel isn't found in the guild of the member
+     * @return true if the member has all permissions (always true for an empty set)
      */
     private static boolean hasPermissions(final Member member, final String channelID, final Set<Permission> permissions) {
         if (permissions.isEmpty()) {
