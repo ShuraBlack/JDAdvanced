@@ -56,4 +56,17 @@ class CooldownTest {
         assertEquals(Validation.ON_COOLDOWN, call(handler, "both", alice));
         assertEquals(Validation.ON_COOLDOWN, call(handler, "both", user("2")));
     }
+
+    @Test
+    void slashCooldownsAreSharedBetweenGuildAndDirectMessages() {
+        final AbstractEventHandler handler = NativeEventHandler.createDefault().registerEvent(List.of(InteractionSet.create(mock(EventWorker.class),
+                Interaction.create(Type.GUILD_SLASH, "ping").setGlobalCD(60),
+                Interaction.create(Type.GLOBAL_SLASH, "ping").setGlobalCD(60))));
+        final User alice = user("1");
+
+        assertEquals(Validation.SUCCESS, handler.getEventWorker("ping", Type.GLOBAL_SLASH, alice, "channel").getValidation());
+        // A DM call must not leave the command free in guilds
+        assertEquals(Validation.ON_COOLDOWN, handler.getEventWorker("ping", Type.GLOBAL_SLASH, user("2"), "channel").getValidation());
+        assertEquals(Validation.ON_COOLDOWN, handler.getEventWorker("ping", Type.GUILD_SLASH, alice, "channel").getValidation());
+    }
 }

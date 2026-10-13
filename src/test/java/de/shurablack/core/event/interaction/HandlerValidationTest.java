@@ -158,13 +158,15 @@ class HandlerValidationTest {
         final User user = mock(User.class);
         when(event.getUser()).thenReturn(user);
         when(event.getName()).thenReturn("ping");
+        when(event.getSubcommandName()).thenReturn("pong");
         when(event.getFullCommandName()).thenReturn("ping");
         when(event.getChannelType()).thenReturn(ChannelType.GROUP);
         when(event.getChannel().asPrivateChannel()).thenThrow(new IllegalStateException("Cannot convert channel of type GROUP"));
 
         handler.onGlobalSlashEvent("ping", event);
 
-        verify(worker).processGlobalSlashEvent(eq(user), isNull(), eq("ping"), eq(event));
+        // Like guild slash commands the worker gets the sub command name
+        verify(worker).processGlobalSlashEvent(eq(user), isNull(), eq("pong"), eq(event));
     }
 
     @Test

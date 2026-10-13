@@ -80,7 +80,7 @@ public abstract class EventWorker {
      * </p>
      * @param user the {@link User} who used the command
      * @param channel the private channel where the command got used, null outside of private channels (e.g. group DMs)
-     * @param name the command name of {@link SlashCommandInteractionEvent#getName()}
+     * @param name the sub command name of {@link SlashCommandInteractionEvent#getSubcommandName()}, null if the command has no sub command
      * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGlobalSlashEvent(final User user, final PrivateChannel channel, final String name, final SlashCommandInteractionEvent event) {

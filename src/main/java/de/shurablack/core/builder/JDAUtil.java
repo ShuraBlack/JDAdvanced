@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * <p>
@@ -43,7 +44,7 @@ public class JDAUtil extends BaseUtil {
         JDA = jda;
         JDA.addEventListener(new ListenerAdapter() {
             @Override
-            public void onReady(ReadyEvent event) {
+            public void onReady(@NotNull ReadyEvent event) {
                 JDAUtil.this.onReady();
             }
         });

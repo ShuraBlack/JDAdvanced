@@ -51,7 +51,7 @@ public class UtilBuilder {
     private static final Logger LOGGER = LoggerFactory.getLogger(UtilBuilder.class);
 
     /** Flag that indicates whether {@link #init()} has completed */
-    private static boolean INIT = false;
+    private static volatile boolean INIT = false;
 
     /** {@link JDAUtil} which gets configured */
     private final JDAUtil JDAUtil;

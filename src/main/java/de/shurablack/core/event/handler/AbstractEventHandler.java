@@ -140,9 +140,18 @@ public abstract class AbstractEventHandler extends EventHandler {
     }
 
     /**
+     * Guild and global variants of a command (slash, user and message context) share their cooldowns,
+     * so a call in a DM counts for the guilds too
+     * @return the key of the global cooldown
+     */
+    private static String cooldownKey(final Type type, final String identifier) {
+        return type.name().replaceFirst("^GLOBAL_", "GUILD_") + identifier;
+    }
+
+    /**
      * Checks both cooldowns before starting them, so a blocked call doesn't consume the other cooldown.
      * If the call isn't blocked, the cooldowns of the event that are greater than 0 get started
-     * @param key the type and identifier of the event
+     * @param key the type and identifier of the event, see {@link #cooldownKey(Type, String)}
      * @param userID the unique ID of the discord user
      * @param event the event object
      * @return true if there is a global or user cooldown still active
@@ -221,7 +230,7 @@ public abstract class AbstractEventHandler extends EventHandler {
                 // Group DMs and user installed commands arent private channels, the worker gets null there
                 e -> e.getWorker().processGlobalSlashEvent(event.getUser(),
                         event.getChannelType() == ChannelType.PRIVATE ? event.getChannel().asPrivateChannel() : null,
-                        event.getName(), event));
+                        event.getSubcommandName(), event));
     }
 
     @Override
@@ -370,7 +379,7 @@ public abstract class AbstractEventHandler extends EventHandler {
             return ValidationEvent.fail(Validation.WRONG_CHANNEL);
         }
 
-        if (onCooldown(type + identifier, user.getId(), e)) {
+        if (onCooldown(cooldownKey(type, identifier), user.getId(), e)) {
             return ValidationEvent.fail(Validation.ON_COOLDOWN);
         }
         return ValidationEvent.success(e);
@@ -417,7 +426,7 @@ public abstract class AbstractEventHandler extends EventHandler {
             }
         }
 
-        if (onCooldown(type + identifier, member.getId(), e)) {
+        if (onCooldown(cooldownKey(type, identifier), member.getId(), e)) {
             return ValidationEvent.fail(Validation.ON_COOLDOWN);
         }
         return ValidationEvent.success(e);

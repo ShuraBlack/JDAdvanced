@@ -25,7 +25,7 @@ class FileBannerTest {
         assertFalse(text.contains("${"), text);
         assertFalse(text.contains("\\033"), "escape codes must be real ESC characters");
         assertTrue(text.contains("\u001B[0m"));
-        assertTrue(text.contains("Version: 1.1.0"), "the library version comes from the pom");
+        assertTrue(text.matches("(?s).*\nVersion: \\d.*"), "the library version comes from the pom");
         assertTrue(text.contains("JDA Version: " + JDAInfo.VERSION));
         assertTrue(text.contains("upload -> uploads commands"));
     }

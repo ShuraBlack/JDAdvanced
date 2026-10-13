@@ -30,9 +30,6 @@ public class MBeansTracker {
 
     private final GarbageCollectorMXBean[] garbageCollectors;
 
-    /** Cached result of {@link #getSystemInfo()}, {@code null} until the first call */
-    private JSONObject systemInfo;
-
     private MBeansTracker() {
         this.runtime = ManagementFactory.getRuntimeMXBean();
         this.memory = ManagementFactory.getMemoryMXBean();
@@ -55,15 +52,10 @@ public class MBeansTracker {
     /**
      * Returns JVM, operating system and class loading information.
      * <br><br>
-     * The object is built on the first call and cached afterwards, so the class loading counts are a snapshot
-     * of that moment. {@code jvmStartTime} is in epoch milliseconds.
-     * @return the cached system information with the sections {@code jvm}, {@code os} and {@code classLoading}
+     * {@code jvmStartTime} is in epoch milliseconds.
+     * @return a new object with the sections {@code jvm}, {@code os} and {@code classLoading}
      */
     public JSONObject getSystemInfo() {
-        if (this.systemInfo != null) {
-            return this.systemInfo;
-        }
-
         JSONObject systemInfo = new JSONObject();
 
         JSONObject jvm = new JSONObject();
@@ -87,8 +79,6 @@ public class MBeansTracker {
         classLoading.put("totalLoadedClassCount", clBean.getTotalLoadedClassCount());
         classLoading.put("unloadedClassCount", clBean.getUnloadedClassCount());
         systemInfo.put("classLoading", classLoading);
-
-        this.systemInfo = systemInfo;
 
         return systemInfo;
     }

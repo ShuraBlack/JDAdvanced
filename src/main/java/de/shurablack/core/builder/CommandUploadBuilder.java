@@ -84,12 +84,19 @@ public class CommandUploadBuilder {
      * @param onlyChanged true to skip targets whose commands are already registered unchanged
      */
     private static void upload(JDA jda, Function<String, Guild> guilds, boolean onlyChanged) {
-        Map<String, List<CommandData>> commands = buildCommands();
-
-        List<CommandData> global = commands.remove("GLOBAL");
-        if (global != null) {
-            push("global", global, jda.updateCommands(), jda.retrieveCommands(true), onlyChanged);
+        Map<String, List<CommandData>> commands;
+        try {
+            commands = scanCommands();
+        } catch (Exception e) {
+            // A partial list would delete the missing commands at discord, so upload nothing
+            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
+            return;
         }
+
+        // Always sent, an empty list removes the commands that are no longer declared
+        List<CommandData> global = commands.getOrDefault("GLOBAL", new ArrayList<>());
+        commands.remove("GLOBAL");
+        push("global", global, jda.updateCommands(), jda.retrieveCommands(true), onlyChanged);
 
         for (Map.Entry<String, List<CommandData>> entry : commands.entrySet()) {
             String guildId = entry.getKey();
@@ -173,6 +180,19 @@ public class CommandUploadBuilder {
      * @return a mutable map from guild ID ("GLOBAL" for global commands) to its commands
      */
     public static Map<String, List<CommandData>> buildCommands() {
+        try {
+            return scanCommands();
+        } catch (Exception e) {
+            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * @return a mutable map from guild ID ("GLOBAL" for global commands) to its commands
+     * @throws IllegalArgumentException if a command declaration is invalid
+     */
+    private static Map<String, List<CommandData>> scanCommands() {
         Map<String, List<CommandData>> commands = new HashMap<>();
 
         try (ScanResult result = ClassScan.scan()) {
@@ -199,10 +219,6 @@ public class CommandUploadBuilder {
                 commands.computeIfAbsent(command.guildId(), x -> new ArrayList<>());
                 commands.get(command.guildId()).add(extractContextCommand(command));
             }
-        } catch (Exception e) {
-            // A partial list would delete the missing commands at discord, so upload nothing
-            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
-            commands.clear();
         }
 
         return commands;

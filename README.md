@@ -82,10 +82,13 @@ UtilBuilder.init();
 final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
 
 // Create an EventHandler object to handle events in the Discord bot
-final EventHandler handler = EventHandler.create();
+final EventHandler handler = NativeEventHandler.createDefault();
 
 // Use the UtilBuilder to create a JDAUtil object for the Discord bot
 final JDAUtil util = UtilBuilder.create(builder, handler).build();
+
+// Runs once the bot is ready and JDAdvanced finished its setup (auto upload, console)
+util.whenReady().thenRun(() -> System.out.println("Bot is ready"));
 ```
 
 ### Configuration
@@ -118,6 +121,7 @@ final EventHandler handler = DispatchEventHandler
 ```
 
 Cooldowns (in seconds), channel restrictions and required permissions can be set per process.
+The cooldowns of a command are shared between guilds and direct messages.
 Permissions are checked in the channel of the event (channel overrides count) and deny the event outside of guilds.
 ```java
 @EventProcess(identifier = "ban", userCooldown = 5, requiredPermissions = Permission.BAN_MEMBERS)

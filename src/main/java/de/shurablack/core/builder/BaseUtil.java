@@ -15,6 +15,7 @@ import java.io.InputStreamReader;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -26,7 +27,8 @@ import java.util.function.Consumer;
  * <br><br>
  * Once the bot is ready ({@link #onReady()}), the commands are optionally uploaded, the default
  * console commands ({@code force cron}, {@code reload local}, {@code upload}, {@code performance},
- * {@code dispatcher}, {@code exit}) are registered and a console thread starts reading {@code System.in}.
+ * {@code dispatcher}, {@code exit}) are registered, a console thread starts reading {@code System.in} and
+ * {@link #whenReady()} completes.
  * A line is passed to the first {@link CommandAction} whose name is a prefix of it.
  * <br><br>
  * The constructor registers a JVM shutdown hook which stops the {@link Dispatcher} and runs the exit task.
@@ -58,6 +60,9 @@ public abstract class BaseUtil {
 
     /** Guards {@link #onReady()}, so a repeated ready event doesn't start a second console */
     private final AtomicBoolean commandLineStarted = new AtomicBoolean(false);
+
+    /** Completed at the end of {@link #onReady()} */
+    private final CompletableFuture<Void> ready = new CompletableFuture<>();
 
     /**
      * Stores the handler and registers a JVM shutdown hook that runs the shutdown once
@@ -219,6 +224,20 @@ public abstract class BaseUtil {
                 LOGGER.error("Command line stopped", e);
             }
         }, "Console_Thread").start();
+        ready.complete(null);
+    }
+
+    /**
+     * Completes once the bot is ready and JDAdvanced has finished its setup: the auto upload is started
+     * and the console is running. Callbacks registered after that run immediately.
+     * <pre>{@code
+     * util.whenReady().thenRun(() -> LOGGER.info("Bot is in {} guilds", JDAUtil.getJDA().getGuilds().size()));
+     * }</pre>
+     * The callbacks run on the thread of the ready event, use {@code thenRunAsync} for long running work
+     * @return the future, never completed exceptionally
+     */
+    public CompletableFuture<Void> whenReady() {
+        return ready;
     }
 
     /** @return the {@link EventHandler} of the bot */
