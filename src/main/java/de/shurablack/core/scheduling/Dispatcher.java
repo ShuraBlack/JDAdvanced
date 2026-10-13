@@ -23,7 +23,7 @@ import java.util.concurrent.*;
  * ("service executor") for asynchronous tasks, e.g. the event handling.
  * <br><br>
  * {@link #start()} must be called before {@link #dispatch(Runnable)} and the other executor methods;
- * {@link de.shurablack.core.builder.UtilBuilder#init()} does that. Cron tasks are registered manually via
+ * {@link de.shurablack.JDAdvanced#init()} does that. Cron tasks are registered manually via
  * {@link #scheduleCronTask(String, String, Runnable)} or found via {@link #discoverCronTasks()}, which
  * is not called automatically.
  * <br><br>

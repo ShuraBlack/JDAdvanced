@@ -1,7 +1,7 @@
 package de.shurablack.core.util;
 
 import de.shurablack.core.builder.InitException;
-import de.shurablack.core.builder.UtilBuilder;
+import de.shurablack.JDAdvanced;
 
 import java.io.File;
 import java.util.Properties;
@@ -11,7 +11,7 @@ import java.util.function.Function;
  * <p>
  * Read access to the configuration properties of the "config.properties" file in the working directory.
  * <br><br>
- * {@link UtilBuilder#init()} loads the file automatically. Besides the mandatory "access_token" for the
+ * {@link JDAdvanced#init()} loads the file automatically. Besides the mandatory "access_token" for the
  * {@link net.dv8tion.jda.api.JDA} login, it holds optional settings like "dispatcher_thread_max".
  * <br>
  * Example:

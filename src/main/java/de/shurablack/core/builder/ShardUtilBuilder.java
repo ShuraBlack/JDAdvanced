@@ -1,8 +1,8 @@
 package de.shurablack.core.builder;
 
+import de.shurablack.JDAdvanced;
 import de.shurablack.core.event.handler.EventHandler;
 import de.shurablack.core.event.handler.NativeEventHandler;
-import de.shurablack.core.util.AssetPool;
 import de.shurablack.core.util.Config;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 
@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 /**
  * <p>
  * Creates and configures a {@link ShardUtil}, which wraps a Discord bot running on multiple shards.
- * The initialization is shared with the {@link UtilBuilder}.
+ * For a single bot use the {@link JDAUtilBuilder}.
  * <br><br>
  * Example:
  * </p>
  * <pre>{@code
  * // Load the config and initialize the library, restricting the classpath scans to your packages
- * ShardUtilBuilder.init("de.mybot");
+ * JDAdvanced.init("de.mybot");
  *
  * // Create a ShardManagerBuilder object to build the Discord bot
  * DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(Config.getConfig("access_token"));
@@ -46,28 +46,6 @@ public class ShardUtilBuilder {
     private final ShardUtil shardUtil;
 
     /**
-     * Same as {@link #init()}, but restricts the classpath scans to the given packages and their sub packages
-     * @param basePackages the packages of your bot, e.g. "de.mybot"; none scans the whole classpath
-     * @throws InitException if the initialization fails, see {@link UtilBuilder#init()}
-     * @see UtilBuilder#init(String...)
-     */
-    public static void init(final String... basePackages) {
-        UtilBuilder.init(basePackages);
-    }
-
-    /**
-     * Initializes the library: loads the "config.properties" file from the working directory, starts the
-     * {@link de.shurablack.core.scheduling.Dispatcher} and initializes the {@link AssetPool} and
-     * {@link de.shurablack.core.util.LocalData}. Must be called before {@link #create(DefaultShardManagerBuilder, EventHandler)}.
-     * The classpath scans cover the whole classpath unless restricted via {@link #init(String...)}
-     * @throws InitException if the config file or its access_token is missing, or the LocalData folder can't be created
-     * @see UtilBuilder#init()
-     */
-    public static void init() {
-        UtilBuilder.init();
-    }
-
-    /**
      * @param util the created {@link ShardUtil} object
      */
     ShardUtilBuilder(final ShardUtil util) {
@@ -78,7 +56,7 @@ public class ShardUtilBuilder {
      * Creates a builder with a {@link NativeEventHandler#createDefault()} handler and a
      * {@link DefaultShardManagerBuilder#createDefault(String)} using the access_token from the {@link Config}
      * @return the builder for chaining
-     * @throws InitException if {@link #init()} wasn't called before
+     * @throws InitException if {@link JDAdvanced#init()} wasn't called before
      */
     public static ShardUtilBuilder createDefault() {
         final DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(Config.getConfig("access_token"));
@@ -92,11 +70,11 @@ public class ShardUtilBuilder {
      * @param builder the configured {@link DefaultShardManagerBuilder}
      * @param handler the handler for the Discord events
      * @return the builder for chaining
-     * @throws InitException if {@link #init()} wasn't called before
+     * @throws InitException if {@link JDAdvanced#init()} wasn't called before
      */
     public static ShardUtilBuilder create(final DefaultShardManagerBuilder builder, final EventHandler handler) {
-        if (!UtilBuilder.isInitialized()) {
-            throw new InitException("You need to run ShardUtilBuilder.init() before creating an ShardUtil object");
+        if (!JDAdvanced.isInitialized()) {
+            throw new InitException("You need to run JDAdvanced.init() before creating a ShardUtil object");
         }
         return new ShardUtilBuilder(new ShardUtil(builder.build(), handler));
     }

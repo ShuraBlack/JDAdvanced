@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Shared entry point for the classpath scans (event workers, cron tasks, interaction commands).
  * <br><br>
  * By default the whole classpath gets scanned, including all dependencies. Restrict it to the
- * packages of your bot via {@link de.shurablack.core.builder.UtilBuilder#init(String...)} to speed up the startup.
+ * packages of your bot via {@link de.shurablack.JDAdvanced#init(String...)} to speed up the startup.
  * </p>
  *
  * @version core-1.1.0
@@ -49,7 +49,7 @@ public final class ClassScan {
         final String[] scanned = packages;
         if (scanned.length == 1 && scanned[0].isEmpty() && !HINTED.getAndSet(true)) {
             LOGGER.info("Scanning the whole classpath including all dependencies. "
-                    + "Restrict it to your packages via UtilBuilder.init(\"de.mybot\") for a faster startup");
+                    + "Restrict it to your packages via JDAdvanced.init(\"de.mybot\") for a faster startup");
         }
         return new ClassGraph().enableAllInfo().acceptPackages(scanned).scan();
     }

@@ -7,11 +7,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
-class UtilBuilderTest {
+class BuilderTest {
 
     @Test
     void createWithoutInitThrowsInsteadOfExiting() {
-        assertThrows(InitException.class, () -> UtilBuilder.create(mock(JDABuilder.class), null));
+        assertThrows(InitException.class, () -> JDAUtilBuilder.create(mock(JDABuilder.class), null));
         assertThrows(InitException.class, () -> ShardUtilBuilder.create(mock(DefaultShardManagerBuilder.class), null));
     }
 }

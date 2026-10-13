@@ -64,7 +64,7 @@ Alternatively, the **.jar** is attached to each [GitHub Release](https://github.
 
 
 ## Creating the JDAUtil Object
-To create the JDAUtil object, you can utilize the UtilBuilder. Prior to that, you should create a "config.properties" file in the root folder (development) or next to the **.jar** file (deployment)
+To create the JDAUtil object, you can utilize the JDAUtilBuilder. Prior to that, you should create a "config.properties" file in the root folder (development) or next to the **.jar** file (deployment)
 that includes at least a property for the "access_token". Copy the [config.example.properties](config.example.properties) to get all available options. Afterward, you can call the init function, which will load the config file, initialize the AssetPool, and LocalData.
 > **HINT:** Set `commands.auto-upload=true` to upload your slash and context commands on launch. Only commands that changed compared to the ones registered at Discord get uploaded.
 > In the console, `upload` does the same on demand and `upload force` uploads everything.
@@ -74,9 +74,9 @@ This builder requires a JDABuilder and an EventHandler object. For more informat
 **Example:**
 
 ```java
-// Initialize the UtilBuilder
-// Optional: pass your base packages, e.g. UtilBuilder.init("de.mybot"), to only scan those for workers, cron tasks and commands
-UtilBuilder.init();
+// Initialize the library
+// Optional: pass your base packages, e.g. JDAdvanced.init("de.mybot"), to only scan those for workers, cron tasks and commands
+JDAdvanced.init();
 
 // Create a JDABuilder object to build the Discord bot
 final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_token"));
@@ -84,8 +84,8 @@ final JDABuilder builder = JDABuilder.createDefault(Config.getConfig("access_tok
 // Create an EventHandler object to handle events in the Discord bot
 final EventHandler handler = NativeEventHandler.createDefault();
 
-// Use the UtilBuilder to create a JDAUtil object for the Discord bot
-final JDAUtil util = UtilBuilder.create(builder, handler).build();
+// Use the JDAUtilBuilder to create a JDAUtil object for the Discord bot
+final JDAUtil util = JDAUtilBuilder.create(builder, handler).build();
 
 // Runs once the bot is ready and JDAdvanced finished its setup (auto upload, console)
 util.whenReady().thenRun(() -> System.out.println("Bot is ready"));
@@ -97,7 +97,7 @@ Furthermore, you have the option to add commands to the command line.<br>
 **Example:**
 
 ```java
-final JDAUtil util = UtilBuilder.create(builder, handler)
+final JDAUtil util = JDAUtilBuilder.create(builder, handler)
   // Adds another commandline action to the console
   .setCommandLineAction(
     new CommandAction("say-hello", "Says 'Hello, World!'", (String args) -> System.out.println("Hello, World!"))
@@ -221,7 +221,7 @@ an unknown option, a type that doesnt fit the option type or a primitive for an 
 Pass a factory to `fromAnnotation`, so workers and command handlers are created by your container. Returning `null` skips a class.
 Restrict the scan to your packages, otherwise ClassGraph scans the whole classpath including Spring itself.
 ```java
-UtilBuilder.init("de.mybot");
+JDAdvanced.init("de.mybot");
 handler.registerEvent(InteractionSet.fromAnnotation(cls -> context.getBeanProvider(cls).getIfAvailable()));
 ```
 Proxied beans (`@Transactional`, `@Async`, ...) need `public` `@CommandHandler` methods, a subclass proxy cant delegate package-private ones.

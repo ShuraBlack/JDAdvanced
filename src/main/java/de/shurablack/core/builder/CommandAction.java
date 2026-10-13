@@ -7,7 +7,7 @@ import java.util.function.Consumer;
  * Represents a named action of the command-line interface. A console line is passed to the
  * first action whose name is a prefix of the line, so the full line (including the name) is the input.
  * <br><br>
- * A CommandAction can be registered via {@link UtilBuilder#setCommandLineAction(CommandAction...)} or
+ * A CommandAction can be registered via {@link JDAUtilBuilder#setCommandLineAction(CommandAction...)} or
  * {@link ShardUtilBuilder#setCommandLineAction(CommandAction...)}
  * <br><br>
  * Example:

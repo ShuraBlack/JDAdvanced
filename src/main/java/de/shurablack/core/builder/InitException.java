@@ -6,9 +6,9 @@ import net.dv8tion.jda.api.JDABuilder;
  * <p>
  * Unchecked exception thrown when the initialization fails.
  * <br><br>
- * It is thrown when {@link UtilBuilder#init()} fails (missing config.properties, missing access_token or
+ * It is thrown when {@link de.shurablack.JDAdvanced#init()} fails (missing config.properties, missing access_token or
  * the properties folder of {@link de.shurablack.core.util.LocalData} can't be created) or when
- * {@link UtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)} or
+ * {@link JDAUtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)} or
  * {@link ShardUtilBuilder#create(net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder, de.shurablack.core.event.handler.EventHandler)}
  * is called before it.
  * </p>

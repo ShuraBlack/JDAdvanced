@@ -20,11 +20,11 @@ import org.jetbrains.annotations.NotNull;
  * Wraps a single {@link JDA} instance and provides the command-line interface of {@link BaseUtil}.
  * The console starts with the first {@link ReadyEvent}.
  * <br><br>
- * It can only be created via the {@link UtilBuilder}. The JDA instance is stored statically,
+ * It can only be created via the {@link JDAUtilBuilder}. The JDA instance is stored statically,
  * so only one JDAUtil per application is supported.
  * </p>
  *
- * @see UtilBuilder UtilBuilder
+ * @see JDAUtilBuilder JDAUtilBuilder
  * @version core-1.0.0
  * @date 12.06.2023
  * @author ShuraBlack
@@ -56,7 +56,7 @@ public class JDAUtil extends BaseUtil {
     }
 
     /**
-     * @return the {@link JDA} instance created by {@link UtilBuilder#create(JDABuilder, EventHandler)},
+     * @return the {@link JDA} instance created by {@link JDAUtilBuilder#create(JDABuilder, EventHandler)},
      * null if no JDAUtil was created yet
      */
     public static JDA getJDA() {
