@@ -1,6 +1,7 @@
 package de.shurablack.core.util;
 
 import de.shurablack.core.builder.CommandAction;
+import net.dv8tion.jda.api.JDAInfo;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -12,8 +13,9 @@ import java.util.List;
  * Console banner that is printed when the CLI of the bot starts.
  * <br><br>
  * Loads a text template from the classpath and replaces the placeholders <code>${author}</code>,
- * <code>${version}</code>, <code>${jdaVersion}</code>, <code>${color}</code>, <code>${bold}</code>,
- * <code>${style.reset}</code> and <code>${registeredCommands}</code>. The version values are hard-coded.
+ * <code>${jdaVersion}</code>, <code>${color}</code>, <code>${bold}</code>,
+ * <code>${style.reset}</code> and <code>${registeredCommands}</code>. The library version is
+ * filled in by Maven resource filtering at build time, the JDA version comes from {@link JDAInfo}.
  * </p>
  *
  * @author ShuraBlack
@@ -38,11 +40,10 @@ public class FileBanner {
 
         this.text = this.text
                 .replace("${author}", "ShuraBlack")
-                .replace("${version}", "1.0.11")
-                .replace("${jdaVersion}", "6.4.1")
-                .replace("${color}", "\\033[104m")
-                .replace("${bold}", "\\033[1m")
-                .replace("${style.reset}", "\\033[0m")
+                .replace("${jdaVersion}", JDAInfo.VERSION)
+                .replace("${color}", "\u001B[104m")
+                .replace("${bold}", "\u001B[1m")
+                .replace("${style.reset}", "\u001B[0m")
                 .replace("${registeredCommands}", formatCommandActions(commands));
     }
 

@@ -199,6 +199,12 @@ public abstract class AbstractEventHandler extends EventHandler {
                 e -> e.getWorker().processButtonEvent(event.getMember(), event.getChannel(), event.getButton().getCustomId(), event));
     }
 
+    /** @return the message text without the leading identifier, later occurrences are kept */
+    private static String stripIdentifier(final String identifier, final MessageReceivedEvent event) {
+        final String content = event.getMessage().getContentRaw();
+        return content.startsWith(identifier) ? content.substring(identifier.length()) : content;
+    }
+
     /**
      * Prefers a registration of the full command name ("music play", e.g. by a
      * {@link de.shurablack.core.event.annotation.command.CommandHandler}) over the registration of the command itself ("music")
@@ -234,7 +240,7 @@ public abstract class AbstractEventHandler extends EventHandler {
     public void onPrivateChannelEvent(final String identifier, final MessageReceivedEvent event) {
         handle(identifier, Type.PRIVATE_CHANNEL, event.getAuthor(), null, event.getChannel().getId(), null,
                 e -> e.getWorker().processPrivateChannelEvent(event.getAuthor(), event.getChannel().asPrivateChannel()
-                        , event.getMessage().getContentRaw().replace(identifier, ""), event));
+                        , stripIdentifier(identifier, event), event));
     }
 
     @Override
@@ -242,7 +248,7 @@ public abstract class AbstractEventHandler extends EventHandler {
         // member is null for webhook messages, those get the non-guild validation
         handle(identifier, Type.PUBLIC_CHANNEL, event.getAuthor(), event.getMember(), event.getChannel().getId(), null,
                 e -> e.getWorker().processPublicChannelEvent(event.getMember(), event.getChannel()
-                        , event.getMessage().getContentRaw().replace(identifier, ""), event));
+                        , stripIdentifier(identifier, event), event));
     }
 
     @Override

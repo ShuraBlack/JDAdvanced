@@ -141,11 +141,12 @@ class HandlerValidationTest {
         final MessageReceivedEvent event = mock(MessageReceivedEvent.class, RETURNS_DEEP_STUBS);
         final Member member = member(false, false);
         when(event.getMember()).thenReturn(member);
-        when(event.getMessage().getContentRaw()).thenReturn("?ping hello");
+        // Only the leading identifier is stripped, later occurrences stay in the text
+        when(event.getMessage().getContentRaw()).thenReturn("?ping hello ?ping");
 
         handler.onPublicChannelEvent("?ping", event);
 
-        verify(worker).processPublicChannelEvent(eq(member), any(), eq(" hello"), eq(event));
+        verify(worker).processPublicChannelEvent(eq(member), any(), eq(" hello ?ping"), eq(event));
     }
 
     @Test

@@ -60,4 +60,10 @@ public class Entry {
     public boolean equals(Object obj) {
         return obj instanceof Entry && ((Entry) obj).id.equals(id);
     }
+
+    /** @return the hash code of the ID, consistent with {@link #equals(Object)} */
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
 }

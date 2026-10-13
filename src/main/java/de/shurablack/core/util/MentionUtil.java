@@ -37,16 +37,6 @@ public class MentionUtil {
     }
 
     /**
-     * Wraps the value as <code>&lt;:id&gt;</code>. Discord renders custom emojis only in the form
-     * <code>&lt;:name:id&gt;</code>, so pass "name:id" or use {@link #wrapEmoji(String, String)}.
-     * @param id the emoji value placed between the brackets
-     * @return the emoji string <code>&lt;:id&gt;</code>
-     */
-    public static String wrapEmoji(String id) {
-        return "<:" + id + ">";
-    }
-
-    /**
      * @param id the custom emoji ID
      * @param name the custom emoji name
      * @return the emoji mention <code>&lt;:name:id&gt;</code> (not animated)
@@ -56,12 +46,12 @@ public class MentionUtil {
     }
 
     /**
-     * Wraps the value as slash command mention. Discord expects <code>&lt;/name:id&gt;</code>, so pass "name:id".
-     * @param id the command value placed after the slash, usually "name:id"
-     * @return the command mention <code>&lt;/id&gt;</code>
+     * @param id the command ID
+     * @param name the full command name, including subcommand group and subcommand, e.g. "music play"
+     * @return the command mention <code>&lt;/name:id&gt;</code>
      */
-    public static String wrapSlashCommand(String id) {
-        return "</" + id + ">";
+    public static String wrapSlashCommand(String id, String name) {
+        return "</" + name + ":" + id + ">";
     }
 
     /**

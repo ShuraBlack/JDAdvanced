@@ -106,7 +106,16 @@
                 <excludes>
                     <exclude>log4j2.xml</exclude>
                     <exclude>console-appender_pattern-layout_colored.xml</exclude>
+                    <exclude>internal/banner.txt</exclude>
                 </excludes>
+            </resource>
+            <resource>
+                <!-- Fills in ${project.version}, the other placeholders are replaced by FileBanner -->
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>internal/banner.txt</include>
+                </includes>
+                <filtering>true</filtering>
             </resource>
         </resources>
     </build>

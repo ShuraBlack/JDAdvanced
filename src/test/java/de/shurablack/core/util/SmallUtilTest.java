@@ -31,11 +31,13 @@ class SmallUtilTest {
         assertEquals("<@2>", MentionUtil.wrapUser("2"));
         assertEquals("<#3>", MentionUtil.wrapChannel("3"));
         assertEquals("<:smile:4>", MentionUtil.wrapEmoji("4", "smile"));
+        assertEquals("</music play:5>", MentionUtil.wrapSlashCommand("5", "music play"));
 
         assertEquals("1", MentionUtil.unwrap(MentionUtil.wrapRole("1")));
         assertEquals("2", MentionUtil.unwrap(MentionUtil.wrapUser("2")));
         assertEquals("3", MentionUtil.unwrap(MentionUtil.wrapChannel("3")));
         assertEquals("4", MentionUtil.unwrap(MentionUtil.wrapEmoji("4", "smile")));
+        assertEquals("5", MentionUtil.unwrap(MentionUtil.wrapSlashCommand("5", "music play")));
     }
 
     @Test
@@ -43,7 +45,6 @@ class SmallUtilTest {
         assertEquals("5", MentionUtil.unwrap("<@!5>"), "legacy nickname mention");
         assertEquals("6", MentionUtil.unwrap("<a:dance:6>"), "animated emoji");
         assertEquals("7", MentionUtil.unwrap("</music play:7>"), "slash command");
-        assertEquals("8", MentionUtil.unwrap(MentionUtil.wrapSlashCommand("8")));
     }
 
     @Test

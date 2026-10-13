@@ -30,6 +30,7 @@ class EntryTest {
         Entry entry1 = new Entry("TestName1", "123", () -> {});
         Entry entry2 = new Entry("TestName2", "123", () -> {});
         assertTrue(entry1.equals(entry2));
+        assertEquals(entry1.hashCode(), entry2.hashCode());
     }
 
     @Test
