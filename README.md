@@ -157,6 +157,7 @@ Your Worker class should extend the EventWorker and override the processes it ha
 
 **Example:**
 
+Classes that inherint EventWorker get automatically picked up. Enable event processes by annotating overridden functions:
 ```java
 public class Worker extends EventWorker {
 
