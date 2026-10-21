@@ -21,12 +21,14 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * <p>
- * This is a default/example class
+ * Default listener that announces guild events as embeds through a Discord webhook.
  * <br><br>
- * The DefaultServerNotifier class is a listener that listens for various types of guild events
- * in a Discord chat server.
+ * Supported events are member join, member leave, ban, unban and boost count changes; each one can be
+ * switched on or off in the constructor. Join and leave announcements use a random entry of the configured
+ * message lists, or a built-in default text if no list is given. The messages are sent with
+ * {@link ServerUtil#sendWebHookMessage(String, WebhookEmbedBuilder)}.
  * <br><br>
- * It extends the ListenerAdapter class from the JDA library, which provides a simple way to create listeners for Discord events.
+ * Can be used as is or serve as an example for a custom {@link ListenerAdapter}.
  * </p>
  *
  * @version core-1.0.0
@@ -38,22 +40,30 @@ public class DefaultServerNotifier extends ListenerAdapter {
     /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultServerNotifier.class);
 
-    /** Discord Server webhook URL */
+    /** Webhook URL of the channel the announcements are posted to */
     private final String webHookLink;
 
-    /** Join messages */
+    /** Texts for join announcements, one is picked at random; {@code null} or empty uses a default text */
     private List<String> joinMessage;
 
-    /** Leave messages */
+    /** Texts for leave announcements, one is picked at random; {@code null} or empty uses a default text */
     private List<String> leaveMessage;
 
-    /** Flags for in-/activ events */
+    /** Flags that enable the announcement of the respective event */
     private final boolean join, leave, ban, unban, boost;
 
     /**
-     * Standard Contructor.
+     * Creates a notifier with custom join and leave texts.
      * <br><br>
-     * Specify what events should be send
+     * The texts are appended to the mention of the user, e.g. {@code "@User, welcome to the server"}.
+     * @param webHookLink the webhook URL of the target channel
+     * @param joinMessage texts for join announcements; {@code null} or empty uses a default text
+     * @param leaveMessage texts for leave announcements; {@code null} or empty uses a default text
+     * @param join whether member joins are announced
+     * @param leave whether members leaving (or being kicked) are announced
+     * @param ban whether bans are announced
+     * @param unban whether unbans are announced
+     * @param boost whether boost count changes are announced
      */
     public DefaultServerNotifier(
             String webHookLink,
@@ -76,9 +86,13 @@ public class DefaultServerNotifier extends ListenerAdapter {
     }
 
     /**
-     * Standard Contructor.
-     * <br><br>
-     * Specify what events should be send
+     * Creates a notifier that uses the default join and leave texts.
+     * @param webHookLink the webhook URL of the target channel
+     * @param join whether member joins are announced
+     * @param leave whether members leaving (or being kicked) are announced
+     * @param ban whether bans are announced
+     * @param unban whether unbans are announced
+     * @param boost whether boost count changes are announced
      */
     public DefaultServerNotifier(
             String webHookLink,
@@ -96,6 +110,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
         this.boost = boost;
     }
 
+    /** Announces the new member with a random join text in green, if enabled. */
     @Override
     public void onGuildMemberJoin(@NotNull GuildMemberJoinEvent event) {
         if (!join) {
@@ -103,13 +118,13 @@ public class DefaultServerNotifier extends ListenerAdapter {
         }
         final WebhookEmbedBuilder eb = createMessageTemplate(
                 event.getUser(),
-                (this.joinMessage == null ? "welcome to the server"
-                        : this.joinMessage.get(ThreadLocalRandom.current().nextInt(0, this.joinMessage.size()))),
+                pick(this.joinMessage, "welcome to the server"),
                 ServerUtil.GREEN
         );
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
     }
 
+    /** Announces the leaving member with a random leave text in red, if enabled. */
     @Override
     public void onGuildMemberRemove(@NotNull GuildMemberRemoveEvent event) {
         if (!leave) {
@@ -117,13 +132,13 @@ public class DefaultServerNotifier extends ListenerAdapter {
         }
         final WebhookEmbedBuilder eb = createMessageTemplate(
                 event.getUser(),
-                (this.joinMessage == null ? "see you later"
-                        : this.leaveMessage.get(ThreadLocalRandom.current().nextInt(0, this.leaveMessage.size()))),
+                pick(this.leaveMessage, "see you later"),
                 ServerUtil.RED
         );
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
     }
 
+    /** Announces the banned user in blue, if enabled. */
     @Override
     public void onGuildBan(@NotNull GuildBanEvent event) {
         if (!ban) {
@@ -138,6 +153,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
     }
 
+    /** Announces the unbanned user in blue, if enabled. */
     @Override
     public void onGuildUnban(@NotNull GuildUnbanEvent event) {
         if (!unban) {
@@ -152,6 +168,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
         ServerUtil.sendWebHookMessage(this.webHookLink, eb);
     }
 
+    /** Announces the old and new boost count, if enabled. */
     @Override
     public void onGuildUpdateBoostCount(@NotNull GuildUpdateBoostCountEvent event) {
         if (!boost) {
@@ -169,11 +186,25 @@ public class DefaultServerNotifier extends ListenerAdapter {
     }
 
     /**
-     * Creates a template message for webook
-     * @param user the independent discord user
-     * @param msg the description of the embed message
-     * @param colorCode the color of the message
-     * @return the builder
+     * Picks a random message
+     * @param messages the configured messages, can be null or empty
+     * @param fallback the message used if there are none
+     * @return a random message or the fallback
+     */
+    private static String pick(final List<String> messages, final String fallback) {
+        if (messages == null || messages.isEmpty()) {
+            return fallback;
+        }
+        return messages.get(ThreadLocalRandom.current().nextInt(messages.size()));
+    }
+
+    /**
+     * Creates an embed with the user as author, the current time as timestamp and
+     * {@code "<mention>, <msg>"} as description.
+     * @param user the user the announcement is about
+     * @param msg the text appended to the user mention
+     * @param colorCode the RGB color of the embed
+     * @return the prepared builder
      */
     private WebhookEmbedBuilder createMessageTemplate(User user, String msg, int colorCode) {
         return new WebhookEmbedBuilder()
@@ -183,6 +214,7 @@ public class DefaultServerNotifier extends ListenerAdapter {
                 .setTimestamp(OffsetDateTime.now());
     }
 
+    /** Logs on debug level that JDA is ready. */
     @Override
     public void onReady(@NotNull ReadyEvent event) {
         LOGGER.debug("JDA announced to be ready");

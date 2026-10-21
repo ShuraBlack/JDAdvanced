@@ -1,8 +1,10 @@
 package de.shurablack.core.scheduling;
 
 /**
- * Represents a scheduling entry with a name, an ID, and an associated task.
- * This class is used to encapsulate information about a scheduled task.
+ * <p>
+ * A cron task registered in the {@link Dispatcher}: its name, the ID assigned by the cron4j scheduler
+ * and the task itself.
+ * </p>
  *
  * @version core-1.1.0
  * @date 12.04.2025
@@ -10,27 +12,21 @@ package de.shurablack.core.scheduling;
  */
 public class Entry {
 
-    /**
-     * The name of the scheduling entry.
-     */
+    /** The name given when scheduling the task */
     private final String name;
 
-    /**
-     * The unique identifier of the scheduling entry.
-     */
+    /** The ID returned by the cron4j scheduler, used to deschedule the task */
     private final String id;
 
-    /**
-     * The task associated with the scheduling entry.
-     */
+    /** The scheduled task */
     private final Runnable task;
 
     /**
-     * Constructs a new Entry with the specified name, ID, and task.
+     * Creates a new entry.
      *
-     * @param name The name of the scheduling entry.
-     * @param id   The unique identifier of the scheduling entry.
-     * @param task The task associated with the scheduling entry.
+     * @param name the name given when scheduling the task
+     * @param id   the ID returned by the cron4j scheduler
+     * @param task the scheduled task
      */
     protected Entry(final String name, final String id, final Runnable task) {
         this.name = name;
@@ -38,29 +34,17 @@ public class Entry {
         this.task = task;
     }
 
-    /**
-     * Retrieves the name of the scheduling entry.
-     *
-     * @return The name of the entry.
-     */
+    /** @return the name given when scheduling the task */
     public String getName() {
         return name;
     }
 
-    /**
-     * Retrieves the unique identifier of the scheduling entry.
-     *
-     * @return The ID of the entry.
-     */
+    /** @return the ID assigned by the cron4j scheduler */
     public String getId() {
         return id;
     }
 
-    /**
-     * Retrieves the task associated with the scheduling entry.
-     *
-     * @return The associated task.
-     */
+    /** @return the scheduled task */
     public Runnable getTask() {
         return task;
     }
@@ -69,11 +53,17 @@ public class Entry {
      * Compares this entry to another object for equality.
      * Two entries are considered equal if their IDs are the same.
      *
-     * @param obj The object to compare with.
-     * @return True if the other object is an Entry with the same ID, false otherwise.
+     * @param obj the object to compare with
+     * @return true if the other object is an Entry with the same ID, false otherwise
      */
     @Override
     public boolean equals(Object obj) {
         return obj instanceof Entry && ((Entry) obj).id.equals(id);
+    }
+
+    /** @return the hash code of the ID, consistent with {@link #equals(Object)} */
+    @Override
+    public int hashCode() {
+        return id.hashCode();
     }
 }

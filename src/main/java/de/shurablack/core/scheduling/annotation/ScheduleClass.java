@@ -7,8 +7,9 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Annotation to mark a class that contains a scheduled task
- * and allowing it to be discoverable by the {@link de.shurablack.core.scheduling.Dispatcher Dispatcher}.
+ * Marks a class that contains {@link Schedule} methods, making it discoverable by
+ * {@link de.shurablack.core.scheduling.Dispatcher#discoverCronTasks() Dispatcher#discoverCronTasks()}.
+ * The class must be inside the packages configured for the classpath scan.
  * </p>
  *
  * @version core-1.1.0

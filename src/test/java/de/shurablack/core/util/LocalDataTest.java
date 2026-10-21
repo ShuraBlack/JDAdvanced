@@ -93,6 +93,37 @@ class LocalDataTest {
     }
 
     @Test
+    void fetchRolesStoresRoleData() {
+        Guild mockGuild = mock(Guild.class);
+        Role mockRole = mock(Role.class);
+        when(mockRole.getId()).thenReturn("42");
+        when(mockRole.getName()).thenReturn("TestRole");
+        when(mockGuild.getRoles()).thenReturn(Collections.singletonList(mockRole));
+
+        LocalData.fetchRoles(mockGuild);
+        assertEquals("42", LocalData.getRoleID("TestRole"));
+        // Roles must not end up in the emoji data
+        assertNull(LocalData.getEmojiID("TestRole"));
+    }
+
+    @Test
+    void fetchedDataIsSavedInThePropertiesFolder() {
+        LocalData.init();
+        Guild mockGuild = mock(Guild.class);
+        Category mockCategory = mock(Category.class);
+        when(mockCategory.getId()).thenReturn("777");
+        when(mockCategory.getName()).thenReturn("SavedCategory");
+        when(mockGuild.getCategories()).thenReturn(Collections.singletonList(mockCategory));
+
+        LocalData.fetchCategories(mockGuild);
+
+        // init() loads from the properties folder, so a reload must find the saved entry
+        LocalData.clear();
+        LocalData.init();
+        assertEquals("777", LocalData.getCategoryID("SavedCategory"));
+    }
+
+    @Test
     void getTmpReturnsNullForNonExistentKey() {
         assertNull(LocalData.getTmp("nonExistentKey"));
     }

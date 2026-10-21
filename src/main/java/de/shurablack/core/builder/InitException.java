@@ -4,17 +4,25 @@ import net.dv8tion.jda.api.JDABuilder;
 
 /**
  * <p>
- * The InitException class is a simple Java class that represents an exception that is thrown when there is an
- * error with initialization. It is a subclass of RuntimeException, which
- * means that it is an unchecked exception that is not required to be declared or caught in a try-catch block.
+ * Unchecked exception thrown when the initialization fails.
  * <br><br>
- * This will prevent the user to create an {@link JDAUtil} object via the {@link UtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)},
- * without calling the {@link UtilBuilder#init()} function.
+ * It is thrown when {@link de.shurablack.JDAdvanced#init()} fails (missing config.properties, missing access_token or
+ * the properties folder of {@link de.shurablack.core.util.LocalData} can't be created) or when
+ * {@link JDAUtilBuilder#create(JDABuilder, de.shurablack.core.event.handler.EventHandler)} or
+ * {@link ShardUtilBuilder#create(net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder, de.shurablack.core.event.handler.EventHandler)}
+ * is called before it.
  * </p>
  *
- * @version core-1.0.0
+ * @version core-1.1.0
  * @date 12.06.2023
  * @author ShuraBlack
  */
 public class InitException extends RuntimeException {
+
+    /**
+     * @param message the reason of the failure
+     */
+    public InitException(final String message) {
+        super(message);
+    }
 }

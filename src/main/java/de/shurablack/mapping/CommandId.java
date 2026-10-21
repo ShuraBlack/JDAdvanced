@@ -6,9 +6,10 @@ import java.util.List;
 
 /**
  * <p>
- * The CommandMapper class is a utility for parsing a string input into a primary command and
- * a list of sub-commands.<br><br>It provides methods for checking the presence of a primary and sub-command,
- * getting the primary and sub-commands, and getting the sizes of the sub-command list and the entire input string
+ * Parses a space-separated input like {@code "primary sub1 sub2"} into a primary command and sub-commands.
+ * <br><br>
+ * It provides methods for checking the presence of a primary and sub-command, getting the primary and
+ * sub-commands, and getting the number of sub-commands and of all tokens.
  * </p>
  *
  * @version mapping-1.0.0
@@ -17,15 +18,16 @@ import java.util.List;
  */
 public class CommandId {
 
-    /** Primary Commands String */
+    /** The first token of the input */
     private String primary;
 
-    /** List of sub commands */
+    /** The sub-commands, never {@code null} */
     private final String[] sub;
 
     /**
-     * The CommandMapper standard constructor
-     * @param input the user input/message
+     * Splits the input at single spaces; the first token becomes the primary command, the others the sub-commands.
+     * @param input the user input/message, must not be {@code null}
+     * @throws IllegalArgumentException if the input is empty
      */
     public CommandId(final String input) {
         if (input.isEmpty()) {
@@ -34,15 +36,12 @@ public class CommandId {
         String[] args = input.split(" ");
         this.primary = args[0];
 
-        if (args.length > 1) {
-            this.sub = new String[0];
-        } else {
-            this.sub = Arrays.copyOfRange(args, 1, args.length);
-        }
+        // Empty for a single word
+        this.sub = Arrays.copyOfRange(args, 1, args.length);
     }
 
     /**
-     * Checks if a primary command is present
+     * Checks if a primary command is present. Always true for a constructed instance.
      * @return true if it is present
      */
     public boolean isPresent() {
@@ -50,8 +49,8 @@ public class CommandId {
     }
 
     /**
-     * Checks if sub commands exists
-     * @return true if there are sub commands
+     * Checks if sub-commands exist
+     * @return true if there are sub-commands
      */
     public boolean isSubPresent() {
         return this.sub.length > 0;
@@ -65,8 +64,8 @@ public class CommandId {
     }
 
     /**
-     * @param index the position of the sub command
-     * @return the sub command or null
+     * @param index the zero-based position of the sub-command, must not be negative
+     * @return the sub-command or {@code null} if the index is out of range
      */
     public String getSub(final int index) {
         if (index >= this.sub.length) {
@@ -76,14 +75,14 @@ public class CommandId {
     }
 
     /**
-     * @return the total length of the command
+     * @return the number of tokens, i.e. the primary command plus all sub-commands
      */
     public int totalSize() {
         return 1 + this.sub.length;
     }
 
     /**
-     * @return the length of the sub commands
+     * @return the number of sub-commands
      */
     public int subSize() {
         return this.sub.length;

@@ -7,11 +7,13 @@ import java.lang.annotation.Target;
 
 /**
  * <p>
- * Annotation to disable a worker.
- * </p>
- *
- * <p>
- * This annotation is used to mark a worker as disabled, preventing it from being processed.
+ * Disables a class for {@link de.shurablack.core.event.interaction.InteractionSet#fromAnnotation()}.
+ * <br><br>
+ * The class doesn't get instantiated and none of its interactions get registered, neither its
+ * {@link EventProcess} / {@link RedirectedProcess} interactions nor its
+ * {@link de.shurablack.core.event.annotation.command.CommandHandler CommandHandler} methods.
+ * Command declarations ({@link de.shurablack.core.event.annotation.command.SlashCommand SlashCommand},
+ * {@link de.shurablack.core.event.annotation.command.ContextCommand ContextCommand}) on the class are still uploaded.
  * </p>
  *
  * @version core-1.1.0

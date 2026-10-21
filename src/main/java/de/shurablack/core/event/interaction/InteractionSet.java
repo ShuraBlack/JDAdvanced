@@ -2,31 +2,36 @@ package de.shurablack.core.event.interaction;
 
 import de.shurablack.core.event.EventWorker;
 import de.shurablack.core.event.annotation.*;
-import de.shurablack.core.util.FileUtil;
-import de.shurablack.core.util.LocalData;
-import io.github.classgraph.ClassGraph;
+import de.shurablack.core.event.annotation.command.SlashCommand;
+import de.shurablack.core.event.annotation.command.CommandHandler;
+import de.shurablack.core.util.ClassScan;
 import io.github.classgraph.ClassInfo;
-import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
  * <p>
- * The InteractionSet class is a utility class that stores a list of {@link Interaction} objects and an associated {@link EventWorker} object.
+ * Stores the {@link Interaction Interactions} of one {@link EventWorker}.
  * <br><br>
- * It provides methods for creating and setting the interactions and for accessing the stored interactions and worker
+ * Sets are discovered from the annotations by {@link #fromAnnotation()} and passed to
+ * {@link de.shurablack.core.event.handler.EventHandler#registerEvent(List)}:
  * </p>
+ * <pre>{@code
+ * NativeEventHandler handler = NativeEventHandler.createDefault()
+ *         .registerEvent(InteractionSet.fromAnnotation());
+ * }</pre>
  *
  * @see Interaction Interaction
  * @version core-1.0.0
@@ -45,12 +50,12 @@ public class InteractionSet {
     private InteractionSet() { }
 
     /**
-     * This is a static factory method that creates a new InteractionSet object.
+     * Creates an InteractionSet, used by the annotation scan
      * @param worker the associated {@link EventWorker}
-     * @param interactions the set of {@link Interaction Options}
+     * @param interactions the interactions handled by the worker
      * @return the built InteractionSet
      */
-    public static InteractionSet create(final EventWorker worker, final Interaction... interactions) {
+    static InteractionSet create(final EventWorker worker, final Interaction... interactions) {
         InteractionSet interactionSet = new InteractionSet();
         interactionSet.worker = worker;
         interactionSet.interactions.addAll(Arrays.asList(interactions));
@@ -58,7 +63,7 @@ public class InteractionSet {
     }
 
     /**
-     * @return the Options stored in the Set
+     * @return the interactions stored in the set (mutable internal list)
      */
     public List<Interaction> getInteractions() {
         return interactions;
@@ -72,81 +77,40 @@ public class InteractionSet {
     }
 
     /**
-     * This static method creates a list of InteractionSets from a JSON file.
-     * <br><br>
-     * Check out the GitHub Wiki for more information's, on how to structure the JSON file.
-     *
-     * @param path the path to the JSON file
+     * Scans the packages configured in {@link ClassScan} for {@link EventWorker} subclasses and classes declaring
+     * {@link CommandHandler} methods, creates one instance per concrete class and builds their InteractionSets.
+     * Anonymous, abstract and {@link DisabledWorker} classes are skipped.
+     * @param instanceFactory creates the instance of a discovered class, null skips the class
      * @return the list of InteractionSets
      */
-    public static List<InteractionSet> fromJson(final String path) {
-        JSONObject jsonObject = FileUtil.loadJson(path);
-        if (jsonObject == null) {
-            return new ArrayList<>();
-        }
-        List<InteractionSet> interactionSets = new ArrayList<>();
-
-        JSONArray jsonArray = jsonObject.getJSONArray("interactionSets");
-        try {
-            for (int idx = 0; idx < jsonArray.length(); idx++) {
-                JSONObject interactionSet = jsonArray.getJSONObject(idx);
-                Class<?> cls = Class.forName(interactionSet.getString("worker"));
-                Object worker = cls.getDeclaredConstructor().newInstance();
-
-                List<Interaction> interactionsList = new ArrayList<>();
-                JSONArray interactions = interactionSet.getJSONArray("interactions");
-                for (int subidx = 0 ; subidx < interactions.length(); subidx++) {
-                    JSONObject interaction = interactions.getJSONObject(subidx);
-                    Type type = Type.valueOf(interaction.getString("type"));
-                    String identifier = interaction.getString("identifier");
-                    long globalCooldown = interaction.getLong("globalCooldown");
-                    long userCooldown = interaction.getLong("userCooldown");
-                    JSONArray channelRestriction = interaction.getJSONArray("channelRestriction");
-                    List<String> channelRestrictionList = new ArrayList<>();
-                    for (int i = 0; i < channelRestriction.length(); i++) {
-                        channelRestrictionList.add(LocalData.getChannelID(channelRestriction.getString(i)));
-                    }
-                    Interaction interactionObject = Interaction.create(type, identifier)
-                            .setGlobalCD(globalCooldown)
-                            .setUserCD(userCooldown)
-                            .setChannelRestriction(channelRestrictionList);
-                    interactionsList.add(interactionObject);
-                }
-                InteractionSet interactionSetObject = InteractionSet.create(
-                        (EventWorker) worker,
-                        interactionsList.toArray(new Interaction[0])
-                );
-                interactionSets.add(interactionSetObject);
-            }
-        } catch (ClassNotFoundException | InvocationTargetException | InstantiationException
-                 | IllegalAccessException | NoSuchMethodException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-        return interactionSets;
-    }
-
-    /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
-     * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
-     *
-     * @see EventProcess
-     * @see RedirectedProcess
-     * @see ExtendedEventProcess
-     * @see DisabledWorker
-     * @return the list of InteractionSets
-     */
-    private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> workerFactory) {
+    private static List<InteractionSet> internalFromAnnotation(final Function<Class<?>, ?> instanceFactory) {
         final Logger logger = LoggerFactory.getLogger(InteractionSet.class);
         final List<InteractionSet> interactionSets = new ArrayList<>();
 
-        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
-            ClassInfoList classes = result.getSubclasses(EventWorker.class);
+        try (ScanResult result = ClassScan.scan()) {
+            final Map<String, SlashCommand> declarations = new HashMap<>();
+            for (ClassInfo info : result.getClassesWithAnnotation(SlashCommand.class)) {
+                final SlashCommand command = info.loadClass().getAnnotation(SlashCommand.class);
+                declarations.put(command.name(), command);
+            }
 
-            for (ClassInfo info : classes) {
-                Class<?> workerClass = info.loadClass();
+            // One instance per class, even if it has worker methods and subcommand handlers
+            final Map<String, ClassInfo> classes = new LinkedHashMap<>();
+            result.getSubclasses(EventWorker.class).forEach(info -> classes.put(info.getName(), info));
+            // Internal worker, gets created per handler method in fromCommandHandlers
+            classes.remove(SlashCommandInvoker.class.getName());
+            // Only classes declaring handlers themselves, subclasses inheriting them would register a second instance
+            result.getClassesWithMethodAnnotation(CommandHandler.class).stream()
+                    .filter(info -> info.hasDeclaredMethodAnnotation(CommandHandler.class))
+                    .forEach(info -> classes.putIfAbsent(info.getName(), info));
+
+            for (ClassInfo info : classes.values()) {
+                // Anonymous classes can't be created by a factory or default constructor. External classes are
+                // superclasses outside of the scanned packages, ClassGraph reports them too
+                if (info.isAnonymousInnerClass() || info.isExternalClass()) {
+                    continue;
+                }
+                final Class<?> workerClass = info.loadClass();
                 if (Modifier.isAbstract(workerClass.getModifiers())) {
                     continue;
                 }
@@ -154,84 +118,122 @@ public class InteractionSet {
                     logger.debug("Worker {} is disabled", workerClass.getName());
                     continue;
                 }
-                EventWorker worker = (EventWorker) workerFactory.apply(workerClass);
-
-                List<Interaction> interactionsList = new ArrayList<>();
-
-                if (workerClass.isAnnotationPresent(RedirectedProcess.class)) {
-                    RedirectedProcess redirectedProcess = workerClass.getAnnotation(RedirectedProcess.class);
-
-                    for (ExtendedEventProcess extended : redirectedProcess.value()) {
-                        Interaction interactionObject = Interaction.create(extended.type(), extended.identifier())
-                                .setGlobalCD(extended.globalCooldown())
-                                .setUserCD(extended.userCooldown())
-                                .setChannelRestriction(Arrays.asList(extended.restrictedChannel()));
-                        interactionsList.add(interactionObject);
-                    }
-
-                    if (interactionsList.isEmpty()) {
-                        continue;
-                    }
-                    InteractionSet interactionSetObject =
-                            InteractionSet.create(
-                            worker,
-                            interactionsList.toArray(new Interaction[0])
-                    );
-                    interactionSets.add(interactionSetObject);
+                final Object instance = instanceFactory.apply(workerClass);
+                if (instance == null) {
+                    // e.g. a dependency injection container without a bean for this class
+                    logger.debug("No instance for {}, skipped", workerClass.getName());
                     continue;
                 }
 
-                for (Method method : workerClass.getDeclaredMethods()) {
-                    if (!method.isAnnotationPresent(EventProcess.class)) {
-                        continue;
+                if (instance instanceof EventWorker) {
+                    final InteractionSet set = fromWorker(workerClass, (EventWorker) instance, logger);
+                    if (set != null) {
+                        interactionSets.add(set);
                     }
-                    final Type type = Type.fromFunctionName(method.getName());
-                    if (type == null) {
-                        logger.warn("Method {} in {} has no valid type", method.getName(), workerClass.getName());
-                        continue;
-                    }
-
-                    EventProcess eventProcess = method.getAnnotation(EventProcess.class);
-
-                    if (method.isAnnotationPresent(BypassGuildValidity.class)) {
-                        logger.warn("Method {} in {} is annotated with @BypassGuildValidity!", method.getName(), workerClass.getName());
-                    }
-
-                    Interaction interactionObject = Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
-                            .setGlobalCD(eventProcess.globalCooldown())
-                            .setUserCD(eventProcess.userCooldown())
-                            .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel())
-                            );
-                    interactionsList.add(interactionObject);
                 }
-
-                if (interactionsList.isEmpty()) {
-                    continue;
-                }
-
-                InteractionSet interactionSetObject = InteractionSet.create(
-                        worker,
-                        interactionsList.toArray(new Interaction[0])
-                );
-                interactionSets.add(interactionSetObject);
+                interactionSets.addAll(fromCommandHandlers(workerClass, instance, declarations, logger));
             }
-            logger.info("Found {} EventWorker classes", classes.size());
+            logger.info("Found {} worker classes", classes.size());
         }
 
         return interactionSets;
     }
 
     /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * Creates the interactions of a worker. A class level {@link RedirectedProcess} takes precedence,
+     * otherwise every declared {@link EventProcess} method is used (its type is derived from the method name,
+     * see {@link Type#fromFunctionName(String)}). {@link BypassGuildValidity} only works on {@link EventProcess} methods
+     * @return the InteractionSet or null if the worker has no interactions
+     */
+    private static InteractionSet fromWorker(final Class<?> workerClass, final EventWorker worker, final Logger logger) {
+        final List<Interaction> interactionsList = new ArrayList<>();
+
+        if (workerClass.isAnnotationPresent(RedirectedProcess.class)) {
+            for (ExtendedEventProcess extended : workerClass.getAnnotation(RedirectedProcess.class).value()) {
+                interactionsList.add(Interaction.create(extended.type(), extended.identifier())
+                        .setGlobalCD(extended.globalCooldown())
+                        .setUserCD(extended.userCooldown())
+                        .setChannelRestriction(Arrays.asList(extended.restrictedChannel()))
+                        .setRequiredPermissions(extended.requiredPermissions()));
+            }
+        } else {
+            for (Method method : workerClass.getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(EventProcess.class)) {
+                    continue;
+                }
+                final Type type = Type.fromFunctionName(method.getName());
+                if (type == null) {
+                    logger.warn("Method {} in {} has no valid type", method.getName(), workerClass.getName());
+                    continue;
+                }
+
+                EventProcess eventProcess = method.getAnnotation(EventProcess.class);
+
+                if (method.isAnnotationPresent(BypassGuildValidity.class)) {
+                    logger.warn("Method {} in {} is annotated with @BypassGuildValidity!", method.getName(), workerClass.getName());
+                }
+
+                interactionsList.add(Interaction.create(type, eventProcess.identifier(), method.isAnnotationPresent(BypassGuildValidity.class))
+                        .setGlobalCD(eventProcess.globalCooldown())
+                        .setUserCD(eventProcess.userCooldown())
+                        .setChannelRestriction(Arrays.asList(eventProcess.restrictedChannel()))
+                        .setRequiredPermissions(eventProcess.requiredPermissions()));
+            }
+        }
+
+        return interactionsList.isEmpty() ? null : InteractionSet.create(worker, interactionsList.toArray(new Interaction[0]));
+    }
+
+    /**
+     * Creates one InteractionSet per declared {@link CommandHandler} method, registered as guild and global slash event
+     * with the full command name as identifier, e.g. "ping" or "music play"
+     * @throws de.shurablack.core.event.ImplementationException if a handler doesn't fit its declaration
+     */
+    private static List<InteractionSet> fromCommandHandlers(final Class<?> workerClass, final Object instance,
+                                                               final Map<String, SlashCommand> declarations, final Logger logger) {
+        final List<InteractionSet> sets = new ArrayList<>();
+        for (Method method : workerClass.getDeclaredMethods()) {
+            final CommandHandler handler = method.getAnnotation(CommandHandler.class);
+            if (handler == null) {
+                continue;
+            }
+            final SlashCommand declaration = declarations.get(handler.command());
+            if (declaration == null) {
+                logger.warn("/{} isnt declared via @SlashCommand, the options of {}#{} cant be validated",
+                        handler.command(), workerClass.getName(), method.getName());
+            }
+
+            final SlashCommandInvoker invoker = SlashCommandInvoker.create(instance, method, declaration);
+            final String identifier = SlashCommandInvoker.commandName(handler);
+            final List<Interaction> interactions = new ArrayList<>();
+            for (Type type : new Type[]{Type.GUILD_SLASH, Type.GLOBAL_SLASH}) {
+                interactions.add(Interaction.create(type, identifier)
+                        .setGlobalCD(handler.globalCooldown())
+                        .setUserCD(handler.userCooldown())
+                        .setChannelRestriction(Arrays.asList(handler.restrictedChannel()))
+                        .setRequiredPermissions(handler.requiredPermissions()));
+            }
+            sets.add(InteractionSet.create(invoker, interactions.toArray(new Interaction[0])));
+        }
+        return sets;
+    }
+
+    /**
+     * Discovers the interactions declared via annotations and creates the instances with their no-arg constructor.
      * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     * The scan covers all {@link EventWorker} subclasses ({@link EventProcess} methods or a {@link RedirectedProcess}
+     * class annotation) and all classes declaring {@link CommandHandler} methods, see {@link #fromAnnotation(Function)}.
+     * Message command identifiers get the {@link de.shurablack.core.event.handler.EventHandler#getPREFIX() prefix}
+     * that is set at the time of the call.
      *
      * @see EventProcess
      * @see RedirectedProcess
      * @see ExtendedEventProcess
+     * @see CommandHandler
      * @see DisabledWorker
      * @return the list of InteractionSets
+     * @throws RuntimeException if a discovered class has no accessible no-arg constructor or it throws
+     * @throws de.shurablack.core.event.ImplementationException if a {@link CommandHandler} doesn't fit its declaration
      */
     public static List<InteractionSet> fromAnnotation() {
         return internalFromAnnotation(cls -> {
@@ -244,20 +246,29 @@ public class InteractionSet {
     }
 
     /**
-     * This static method creates a list of InteractionSets from the {@link EventWorker} classes in the classpath.
+     * Discovers the interactions declared via annotations, like {@link #fromAnnotation()}, but lets the caller create
+     * the instances (e.g. a dependency injection container).
      * <br><br>
-     * It scans the classpath for all classes that extend {@link EventWorker} and creates an InteractionSet for each
-     * class that has the {@link EventProcess} or {@link RedirectedProcess} annotation.
+     * Abstract, anonymous and {@link DisabledWorker} classes are skipped. A {@link CommandHandler} class doesn't have to
+     * extend {@link EventWorker}, a class can have both worker methods and {@link CommandHandler} methods (one instance).
+     * <br><br>
+     * Spring example, classes without a bean get skipped:
+     * <pre>{@code
+     * InteractionSet.fromAnnotation(cls -> context.getBeanProvider(cls).getIfAvailable());
+     * }</pre>
+     * Proxied beans (e.g. @Transactional) need public {@link CommandHandler} methods, see {@link CommandHandler}.
      *
+     * @param instanceFactory creates the instance of a discovered class (worker or class with {@link CommandHandler} methods)
+     *                        instead of the default constructor. Returning null skips the class
+     * @return the list of InteractionSets
+     * @throws de.shurablack.core.event.ImplementationException if a {@link CommandHandler} doesn't fit its declaration
+     *                                                          or the instance is an unsupported proxy
      * @see EventProcess
      * @see RedirectedProcess
      * @see ExtendedEventProcess
-     * @see DisabledWorker
-     * @param workerFactory a function that takes a Class object and returns an instance of that class. This is used to create the EventWorker instances instead of using the default constructor.
-     * @return the list of InteractionSets
      */
-    public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> workerFactory) {
-        return internalFromAnnotation(workerFactory);
+    public static List<InteractionSet> fromAnnotation(final Function<Class<?>, ?> instanceFactory) {
+        return internalFromAnnotation(instanceFactory);
     }
 
 }

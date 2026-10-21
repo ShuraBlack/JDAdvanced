@@ -15,9 +15,10 @@ import java.util.Properties;
 
 /**
  * <p>
- * The FileUtil class is a utility class that provides helper methods for working with files.
+ * Static helper methods for working with files.
  * <br><br>
- * It provides methods for loading properties, JSON, and image files
+ * Provides loading and saving of properties files as well as loading JSON and image files.
+ * Errors are logged instead of thrown; the methods return an empty or null result instead.
  * </p>
  *
  * @version core-1.0.0
@@ -32,9 +33,9 @@ public class FileUtil {
     private FileUtil() { }
 
     /**
-     * Loads the properties from a properties file
+     * Loads the properties from a properties file.
      * @param path the path to the properties file including its name
-     * @return the Properties
+     * @return the loaded properties, empty if the file couldn't be read (never null)
      */
     public static Properties loadProperties(final String path) {
         final Properties properties = new Properties();
@@ -52,17 +53,20 @@ public class FileUtil {
     }
 
     /**
-     * Saves the properties object to a file
-     * @param path the path and name where the file should be created
-     * @param header the headline of the properties file (e.g. informations about the file)
-     * @param properties the properties object which will be saved
+     * Saves the properties to a file (UTF-8), overwriting an existing file.
+     * <br><br>
+     * Writes the header line followed by the entries as <code>key=value</code>. Values aren't escaped,
+     * so keys and values must be strings.
+     * @param path the path and name of the file
+     * @param header the first line of the file, should be a comment (e.g. "# Add role with &lt;name&gt;=&lt;role_id&gt;")
+     * @param properties the properties which will be saved
      */
     public static void saveProperties(final String path, final String header, final Properties properties) {
         final StringBuilder data = new StringBuilder();
         data.append(header).append("\n");
 
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-            data.append((String)entry.getKey()).append("=").append((String)entry.getValue());
+            data.append((String)entry.getKey()).append("=").append((String)entry.getValue()).append("\n");
         }
 
         final File file = new File(path);
@@ -76,9 +80,9 @@ public class FileUtil {
     }
 
     /**
-     * This is a static method that loads the JSON from a JSON file
-     * @param path the path to the properties file including its name
-     * @return the {@link JSONObject} or null
+     * Loads a JSON object from a file.
+     * @param path the path to the JSON file including its name
+     * @return the {@link JSONObject} or null if the file couldn't be read or parsed
      */
     public static JSONObject loadJson(final String path) {
         final StringBuilder contentBuilder = new StringBuilder();
@@ -104,28 +108,24 @@ public class FileUtil {
     }
 
     /**
-     * Converts a file to an JDA usable {@link FileUpload}.
-     * @param file the file Object ({@link AssetPool} is cabable of storing)
-     * @param name the representive name for the file
-     * @return the FileUpload or null
+     * Converts a file to a JDA {@link FileUpload}.
+     * @param file the file to upload
+     * @param name the file name shown in Discord
+     * @return the FileUpload or null if the file doesn't exist. The file gets read when JDA sends it
      */
     public static FileUpload toFileUpload(final File file, final String name) {
         if (!file.exists()) {
             return null;
         }
 
-        try (final InputStream target = new FileInputStream(file)) {
-            return FileUpload.fromData(target, name);
-        } catch (IOException e) {
-            LOGGER.error("Something went wrong, while opening the file stream", e);
-        }
-        return null;
+        // JDA opens the file when sending, a stream closed here would fail the upload
+        return FileUpload.fromData(file, name);
     }
 
     /**
-     * This is a static method that loads an image from an image file
-     * @param path the path to the properties file including its name
-     * @return the {@link Image} or null
+     * Loads an image from a file.
+     * @param path the path to the image file including its name
+     * @return the {@link Image} or null if the file couldn't be read or has no supported image format
      */
     public static Image loadImage(final String path) {
         try {

@@ -6,8 +6,18 @@ import org.json.JSONObject;
 import java.lang.management.*;
 import com.sun.management.OperatingSystemMXBean;
 
+/**
+ * <p>
+ * Collects JVM and operating system metrics from the platform MXBeans as {@link JSONObject}s.
+ * <br><br>
+ * Used by {@link VMServer} to send static system information once per client and live data periodically.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class MBeansTracker {
 
+    /** Lazily created singleton */
     private static MBeansTracker instance;
 
     private final RuntimeMXBean runtime;
@@ -20,8 +30,6 @@ public class MBeansTracker {
 
     private final GarbageCollectorMXBean[] garbageCollectors;
 
-    private JSONObject systemInfo;
-
     private MBeansTracker() {
         this.runtime = ManagementFactory.getRuntimeMXBean();
         this.memory = ManagementFactory.getMemoryMXBean();
@@ -30,6 +38,10 @@ public class MBeansTracker {
         this.garbageCollectors = ManagementFactory.getGarbageCollectorMXBeans().toArray(new GarbageCollectorMXBean[0]);
     }
 
+    /**
+     * Returns the singleton, creating it on the first call. The lazy creation isn't synchronized.
+     * @return the tracker instance
+     */
     protected static MBeansTracker get() {
         if (instance == null) {
             instance = new MBeansTracker();
@@ -37,11 +49,13 @@ public class MBeansTracker {
         return instance;
     }
 
+    /**
+     * Returns JVM, operating system and class loading information.
+     * <br><br>
+     * {@code jvmStartTime} is in epoch milliseconds.
+     * @return a new object with the sections {@code jvm}, {@code os} and {@code classLoading}
+     */
     public JSONObject getSystemInfo() {
-        if (this.systemInfo != null) {
-            return this.systemInfo;
-        }
-
         JSONObject systemInfo = new JSONObject();
 
         JSONObject jvm = new JSONObject();
@@ -66,11 +80,17 @@ public class MBeansTracker {
         classLoading.put("unloadedClassCount", clBean.getUnloadedClassCount());
         systemInfo.put("classLoading", classLoading);
 
-        this.systemInfo = systemInfo;
-
         return systemInfo;
     }
 
+    /**
+     * Returns a fresh snapshot of uptime, process CPU load, memory, thread and garbage collector metrics.
+     * <br><br>
+     * Memory values are in bytes ({@code -1} if undefined), times in milliseconds. {@code processCpuLoad} is in
+     * the range 0.0 to 1.0 across all CPUs, or negative if unavailable.
+     * @return a new object with the keys {@code uptimeMs}, {@code os}, {@code memory}, {@code threads}
+     *         and {@code garbageCollectors}
+     */
     public JSONObject getLiveInfo() {
         JSONObject liveInfo = new JSONObject();
         liveInfo.put("uptimeMs", this.runtime.getUptime());

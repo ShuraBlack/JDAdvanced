@@ -1,6 +1,7 @@
 package de.shurablack.core.util;
 
-import de.shurablack.core.builder.UtilBuilder;
+import de.shurablack.core.builder.InitException;
+import de.shurablack.JDAdvanced;
 
 import java.io.File;
 import java.util.Properties;
@@ -8,10 +9,10 @@ import java.util.function.Function;
 
 /**
  * <p>
- * The Config class is a simple Java class that provides a way to read configuration properties from a file.
+ * Read access to the configuration properties of the "config.properties" file in the working directory.
  * <br><br>
- * Config will automatically fetch an config.properties file on {@link UtilBuilder#init()} and will provide
- * properties for the {@link net.dv8tion.jda.api.JDA}
+ * {@link JDAdvanced#init()} loads the file automatically. Besides the mandatory "access_token" for the
+ * {@link net.dv8tion.jda.api.JDA} login, it holds optional settings like "dispatcher_thread_max".
  * <br>
  * Example:
  * </p>
@@ -33,33 +34,27 @@ import java.util.function.Function;
 public class Config {
 
     /**
-     * A Properties object that stores the configuration properties that are loaded from the "config.properties" file.
+     * The properties loaded from the "config.properties" file.
      * <br><br>
-     * This field is initially an empty Properties object, and it
-     * is populated with the properties from the file when the loadConfig() method is called
+     * Empty until {@link #loadConfig()} is called, which replaces it with the content of the file.
      */
     private static Properties CONFIGS = new Properties();
 
     /**
-     * This method takes a string representing the name of a configuration property,
-     * and it returns the value of that property.
-     * <br><br>
-     * If the property does not exist, this method will return 'null'
-     * @param name the specified property which will be checked
-     * @return the corresponding property or null
+     * Returns the value of a configuration property.
+     * @param name the name of the property
+     * @return the value or null if the property doesn't exist
      */
     public static String getConfig(final String name) {
         return CONFIGS.getProperty(name);
     }
 
     /**
-     * This method takes a string representing the name of a configuration property,
-     * and it returns the value of that property.
-     * <br><br>
-     * If the property does not exist, this method will return the default value.
-     * @param name the specified property which will be checked
-     * @param defaultValue the default value which will be returned if the property does not exist
-     * @return the corresponding property or null
+     * Returns the value of a configuration property parsed as {@code long}.
+     * @param name the name of the property
+     * @param defaultValue the value returned if the property doesn't exist
+     * @return the parsed value or {@code defaultValue}
+     * @throws NumberFormatException if the value isn't a valid {@code long}
      */
     public static long getConfigAsLong(final String name, final long defaultValue) {
         final String value = CONFIGS.getProperty(name);
@@ -70,13 +65,11 @@ public class Config {
     }
 
     /**
-     * This method takes a string representing the name of a configuration property,
-     * and it returns the value of that property.
-     * <br><br>
-     * If the property does not exist, this method will return the default value.
-     * @param name the specified property which will be checked
-     * @param defaultValue the default value which will be returned if the property does not exist
-     * @return the corresponding property or null
+     * Returns the value of a configuration property parsed as {@code int}.
+     * @param name the name of the property
+     * @param defaultValue the value returned if the property doesn't exist
+     * @return the parsed value or {@code defaultValue}
+     * @throws NumberFormatException if the value isn't a valid {@code int}
      */
     public static int getConfigAsInt(final String name, final int defaultValue) {
         final String value = CONFIGS.getProperty(name);
@@ -87,22 +80,20 @@ public class Config {
     }
 
     /**
-     * Loads the configuration properties from a file named "config.properties" in the current directory.
-     * <br><br>
-     * If this file does not exist, the method will log an error message and terminate the program
+     * Loads the configuration properties from the file "config.properties" in the working directory,
+     * replacing any previously loaded properties.
+     * @throws InitException if the file or the "access_token" property is missing
      */
     public static void loadConfig() {
         final File file = new File("config.properties");
         if (!file.exists()) {
-            ServerUtil.GLOBAL_LOGGER.error("JDAUtils misses the <\u001b[32;1mconfig.properties\u001b[0m> file and will be terminated");
-            System.exit(1);
+            throw new InitException("JDAdvanced misses the config.properties file");
         }
 
         CONFIGS = FileUtil.loadProperties("config.properties");
 
         if (!CONFIGS.containsKey("access_token")) {
-            ServerUtil.GLOBAL_LOGGER.error("The <\u001b[32;1mconfig.properties\u001b[0m> misses an discord access_token and will be terminated");
-            System.exit(1);
+            throw new InitException("The config.properties misses a discord access_token");
         }
     }
 }

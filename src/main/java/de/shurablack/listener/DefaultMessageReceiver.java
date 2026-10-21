@@ -7,11 +7,14 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * <p>
- * This is a default/example class
+ * Default listener that forwards every {@link MessageReceivedEvent} to an {@link EventHandler}.
  * <br><br>
- * The DefaultMessageReceiver class is a listener that listens for {@link MessageReceivedEvent} in a Discord chat server.
+ * The identifier is the first space-separated token of the raw message content (e.g. {@code "!help"} for
+ * {@code "!help me"}). Guild messages go to {@link EventHandler#onPublicChannelEvent}, direct messages to
+ * {@link EventHandler#onPrivateChannelEvent}. Messages from bots, including this one, are forwarded as well.
+ * Reading message content requires the {@code MESSAGE_CONTENT} gateway intent.
  * <br><br>
- * It extends the ListenerAdapter class from the JDA library, which provides a simple way to create listeners for Discord events.
+ * Can be used as is or serve as an example for a custom {@link ListenerAdapter}.
  * </p>
  *
  * @version core-1.0.0
@@ -20,22 +23,24 @@ import org.jetbrains.annotations.NotNull;
  */
 public class DefaultMessageReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
+    /** The {@link EventHandler} that receives all forwarded events */
     private final EventHandler handler;
 
-    /** Automatic delete incoming {@link net.dv8tion.jda.api.entities.Guild Guild} messages */
+    /** Whether incoming {@link net.dv8tion.jda.api.entities.Guild Guild} messages are deleted before they are forwarded */
     private boolean autoDelete = false;
 
     /**
-     * The constructor for the class
-     * @param handler the specified {@link EventHandler}
-     * @param autoDelete the flag for auto deletion
+     * Creates a new receiver.
+     * @param handler the {@link EventHandler} to forward the events to
+     * @param autoDelete {@code true} to delete every guild message (requires the {@code MESSAGE_MANAGE} permission);
+     *                   direct messages are never deleted
      */
     public DefaultMessageReceiver(final EventHandler handler, final boolean autoDelete) {
         this.handler = handler;
         this.autoDelete = autoDelete;
     }
 
+    /** Optionally deletes guild messages, then forwards the message to the public or private channel handler method. */
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         String[] args = event.getMessage().getContentRaw().split(" ");

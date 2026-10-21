@@ -1,13 +1,21 @@
 package de.shurablack.core.event.validation;
 
 import de.shurablack.core.util.ServerUtil;
+import de.shurablack.localization.Language;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+
+import java.util.Locale;
 
 /**
- * Enum representing various validation states for interactions.
- * Each validation state has an associated message and can generate
- * a Discord embed message for user feedback.
+ * <p>
+ * Result of the validation of an incoming event by the event handler.
+ * <br><br>
+ * Every failure state has an English message and can generate a red Discord embed, which the handler
+ * sends as ephemeral error feedback for interactions. The messages can be translated via
+ * {@link Language}, see {@link #getMessage(DiscordLocale)}.
+ * </p>
  *
  * @version core-1.1.0
  * @date 12.04.2025
@@ -15,66 +23,92 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
  */
 public enum Validation {
     /**
-     * Validation state indicating the interaction is not available for bots.
+     * The event got triggered by a bot and bot requests are ignored.
      */
     IS_BOT("This interaction is not available for bots"),
 
     /**
-     * Validation state indicating the interaction request might be malformed or outdated.
+     * No event is registered for the type and identifier.
      */
     NO_EVENT("The interaction request might be malformed or outdated"),
 
     /**
-     * Validation state indicating the command is not available in the current channel.
+     * The channel isn't part of the channel restriction of the event.
      */
     WRONG_CHANNEL("This command is not available in this channel"),
 
     /**
-     * Validation state indicating the interaction is on cooldown.
+     * The global cooldown or the cooldown of the user is still active.
      */
     ON_COOLDOWN("This interaction is on cooldown"),
 
     /**
-     * Validation state indicating the user lacks the required permissions.
+     * The member lacks a required permission, or the event requires permissions and has no guild member (e.g. DMs).
      */
     NO_PERMISSION("You don't have the permission to execute this interaction"),
 
     /**
-     * Validation state indicating the interaction was successful.
+     * The event passed the validation. Has no message (null).
      */
     SUCCESS(null);
 
     /**
-     * The message associated with the validation state.
+     * The English message of the validation state, null for {@link #SUCCESS}.
      */
     private final String message;
 
     /**
      * Constructor for the Validation enum.
      *
-     * @param message The message associated with the validation state.
+     * @param message the English message of the validation state, null for {@link #SUCCESS}
      */
     Validation(String message) {
         this.message = message;
     }
 
     /**
-     * Retrieves the message associated with the validation state.
+     * Retrieves the English message of the validation state.
      *
-     * @return The validation message.
+     * @return the English message, null for {@link #SUCCESS}
      */
     public String getMessage() {
         return message;
     }
 
     /**
-     * Generates a Discord embed message based on the validation state.
+     * Generates a red Discord embed with the English message as description.
      *
-     * @return A {@link MessageEmbed} containing the validation message.
+     * @return a {@link MessageEmbed} containing the validation message
      */
     public MessageEmbed getEmbed() {
         return new EmbedBuilder()
                 .setDescription(message)
+                .setColor(ServerUtil.RED)
+                .build();
+    }
+
+    /**
+     * Retrieves the message in the given language. Translations are looked up via {@link Language}
+     * with the key "validation.&lt;name&gt;" (e.g. "validation.on_cooldown"), the English message is the fallback.
+     *
+     * @param locale the Discord locale of the user
+     * @return the translated or the English validation message
+     */
+    public String getMessage(final DiscordLocale locale) {
+        final String translated = Language.get(locale, "validation." + name().toLowerCase(Locale.ROOT));
+        return translated.isEmpty() ? message : translated;
+    }
+
+    /**
+     * Generates a red Discord embed with the message in the given language as description.
+     *
+     * @param locale the Discord locale of the user
+     * @return a {@link MessageEmbed} containing the translated validation message
+     * @see #getMessage(DiscordLocale)
+     */
+    public MessageEmbed getEmbed(final DiscordLocale locale) {
+        return new EmbedBuilder()
+                .setDescription(getMessage(locale))
                 .setColor(ServerUtil.RED)
                 .build();
     }

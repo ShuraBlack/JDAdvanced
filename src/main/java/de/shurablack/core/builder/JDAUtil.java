@@ -1,24 +1,11 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.handler.EventHandler;
-import de.shurablack.monitoring.VM;
-import de.shurablack.core.scheduling.Dispatcher;
-import de.shurablack.core.util.LocalData;
-import de.shurablack.sql.ConnectionPool;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * <p>
@@ -30,232 +17,49 @@ import java.util.function.Consumer;
  * <br>
  *
  * <p>
- * The JDAUtil class is a Java class that provides a way to interact with a Discord bot
- * , as well as using a command-line interface
- * <br>
- * It can only be created via the {@link UtilBuilder}.
- * <br>
+ * Wraps a single {@link JDA} instance and provides the command-line interface of {@link BaseUtil}.
+ * The console starts with the first {@link ReadyEvent}.
+ * <br><br>
+ * It can only be created via the {@link JDAUtilBuilder}. The JDA instance is stored statically,
+ * so only one JDAUtil per application is supported.
  * </p>
  *
- * @see UtilBuilder UtilBuilder
+ * @see JDAUtilBuilder JDAUtilBuilder
  * @version core-1.0.0
  * @date 12.06.2023
  * @author ShuraBlack
  */
-public class JDAUtil {
+public class JDAUtil extends BaseUtil {
 
-    /** Class Logger */
-    private static final Logger LOGGER = LoggerFactory.getLogger(JDAUtil.class);
-
-    /** Presents the discord bot */
+    /** The Discord bot, null until a JDAUtil was created */
     private static JDA JDA;
 
-    /** Class to handle events of the discord bot */
-    private final EventHandler handler;
-
-    /** Class to manage connections to a database */
-    private ConnectionPool connectionPool;
-
-    /** Task which will be executed on exit */
-    private Consumer<String> onExit;
-
-    private volatile boolean gracefullyShutdown = false;
-
     /**
-     * List of {@link CommandAction} which represeting the available commands
-     */
-    private final List<CommandAction> commandActions = new ArrayList<>();
-
-    /**
-     * This is the constructor for the JDAUtil class
-     * @param jda the specified discord bot
-     * @param handler the specified hadler object
+     * Stores the bot and registers a listener that calls {@link #onReady()} on its ready event
+     * @param jda the Discord bot
+     * @param handler the handler for the Discord events
      */
     JDAUtil(final JDA jda, final EventHandler handler) {
+        super(handler);
         JDA = jda;
         JDA.addEventListener(new ListenerAdapter() {
             @Override
-            public void onReady(ReadyEvent event) {
-                startCommandLine();
+            public void onReady(@NotNull ReadyEvent event) {
+                JDAUtil.this.onReady();
             }
         });
-        this.handler = handler;
+    }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (gracefullyShutdown) {
-                return;
-            }
-            LOGGER.info("Application gets terminated ...");
-            Dispatcher.shutdownService();
-            if (this.onExit != null) {
-                onExit.accept("");
-            }
-        }));
+    @Override
+    void uploadCommands(final boolean onlyChanged) {
+        CommandUploadBuilder.uploadInteractionCommands(JDA, onlyChanged);
     }
 
     /**
-     * Sets the connectionPool field to the given ConnectionPool object
-     * @param pool the specified connection pool
-     */
-    void setConnectionPool(final ConnectionPool pool) {
-        this.connectionPool = pool;
-    }
-
-    /**
-     * Adds a {@link CommandAction} object to the commandActions list and make it available
-     * @param action that should be added
-     */
-    void addAction(final CommandAction action) {
-        this.commandActions.add(action);
-    }
-
-    /**
-     * Adds an shutdown task, which will be executed on calling the exit command in the terminal
-     * @param task the specified task
-     */
-    void addExitTask(final Consumer<String> task) {
-        this.onExit = task;
-    }
-
-    /**
-     * Creates a string containing a list of the available commands and their descriptions
-     * @return the generated string
-     */
-    private String createOverview() {
-        final StringBuilder s = new StringBuilder();
-
-        for (CommandAction action : commandActions) {
-            s.append(action.getName()).append(" -> ").append(action.getDescription()).append("\n");
-        }
-
-        return s.toString();
-    }
-
-    /**
-     * Takes a string representing a command, and it returns an Optional<CommandAction> object
-     * containing the CommandAction object for the given command if it exists,
-     * or an empty Optional if the command does not exist.
-     * @param input the command line input
-     * @return Optional with {@link CommandAction} or an empty Optional
-     */
-    private Optional<CommandAction> findCommand(final String input) {
-        return commandActions.stream().filter(command -> input.startsWith(command.getName())).findAny();
-    }
-
-    /**
-     * Starts a new thread that reads commands from the
-     * command-line interface and invokes the corresponding CommandAction objects.
-     */
-    void startCommandLine() {
-        addAction(new CommandAction(
-                "force cron",
-                "<name> Forces a cron task with given name",
-                input -> {
-                    final String[] split = input.split(" ");
-                    if (split.length < 3) {
-                        LOGGER.error("Invalid input: force cron <name>");
-                        return;
-                    }
-                    Dispatcher.forceCronTask(split[2]);
-                }
-        ));
-        addAction(new CommandAction(
-                "reload local",
-                "Reloads the LocalData",
-                input -> {
-                    LOGGER.info("Reloading LocalData ...");
-                    LocalData.clear();
-                    LocalData.init();
-                    LOGGER.info("LocalData reloaded");
-                }
-        ));
-        addAction(new CommandAction(
-                "upload",
-                "Uploads all interaction commands",
-                input -> {
-                    LOGGER.info("Uploading commands ...");
-                    CommandUploadBuilder.uploadInteractionCommands(JDA);
-                    LOGGER.info("Commands uploaded");
-                }
-        ));
-        addAction(new CommandAction(
-                "performance",
-                "Shows performance debug (<mem/load>)",
-                input -> {
-                    final String[] args = input.split(" ");
-                    if (args.length < 2) {
-                        LOGGER.error("Invalid input: performance <mem/load>");
-                        return;
-                    }
-                    if (args[1].equals("mem")) {
-                        LOGGER.info("\n" + VM.getMemoryUsage());
-                    } else if (args[1].equals("load")) {
-                        LOGGER.info("\n" + VM.getProcessLoad());
-                    } else {
-                        LOGGER.error("Invalid input: performance <mem/load>");
-                    }
-                }
-        ));
-        addAction(new CommandAction(
-                "dispatcher",
-                "Shows dispatcher debug",
-                input -> Dispatcher.logStatus()
-        ));
-        addAction(new CommandAction(
-                "exit",
-                "Closes the Application",
-                input -> {
-                    gracefullyShutdown = true;
-                    LOGGER.info("Application gets terminated ...");
-                    Dispatcher.shutdownService();
-                    if (this.onExit != null) {
-                        onExit.accept(input);
-                    }
-                    System.exit(1);
-                }
-        ));
-        new Thread(() -> {
-            String line;
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-
-            try {
-                System.out.println("\n====================================================\n" +
-                        "-> Command Line Interface is ready <-\n" +
-                        "Made by ShuraBlack" +
-                        "\n====================================================\n" +
-                        "Available Commands:" +
-                        "\n====================================================\n" +
-                        createOverview() + "\n");
-
-                while ((line = reader.readLine()) != null) {
-                    Optional<CommandAction> action = findCommand(line);
-                    final String input = line;
-                    action.ifPresent(entry -> entry.getConsumer().accept(input));
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }, "Console_Thread").start();
-    }
-
-    /**
-     * @return the {@link JDA} object which needs be link with {@link UtilBuilder#create(JDABuilder, EventHandler)}
+     * @return the {@link JDA} instance created by {@link JDAUtilBuilder#create(JDABuilder, EventHandler)},
+     * null if no JDAUtil was created yet
      */
     public static JDA getJDA() {
         return JDA;
-    }
-
-    /**
-     * @return the EventHandler object
-     */
-    public EventHandler getHandler() {
-        return handler;
-    }
-
-    /**
-     * @return the ConnectionPool object
-     */
-    public ConnectionPool getConnectionPool() {
-        return connectionPool;
     }
 }

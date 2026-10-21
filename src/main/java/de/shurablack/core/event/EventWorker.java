@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
@@ -20,21 +21,29 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 
 /**
  * <p>
- * {@link EventWorker} cant be instantiated directly and should be extended
- * by an event processing class.
+ * Base class of every event processing class. It can't be instantiated directly and has to be extended.
  * <br><br>
- * Override the desired event process function and register your worker with the {@link de.shurablack.core.event.handler.EventHandler#registerEvent(InteractionSet...)}.
+ * Override the process methods of the events you want to handle and declare the interactions via annotations:
+ * {@link de.shurablack.core.event.annotation.EventProcess @EventProcess} on the overridden methods or
+ * {@link de.shurablack.core.event.annotation.RedirectedProcess @RedirectedProcess} on the class.
+ * {@link InteractionSet#fromAnnotation()} discovers the worker, its result gets registered with
+ * {@link de.shurablack.core.event.handler.EventHandler#registerEvent(java.util.List)}.
+ * Slash commands can also be handled without a worker, see
+ * {@link de.shurablack.core.event.annotation.command.CommandHandler @CommandHandler}.
  * <br><br>
- * The class will throw a {@link ImplementationException} if the method gets called, but isn't implemented probably
- * or still calls the <b>super()</b> function.
+ * Every process method throws an {@link ImplementationException} if it gets called, but isn't overridden
+ * or still calls the <b>super</b> method.
  * </p>
  * <pre>{@code
- * public Worker extends EventWorker {
+ * public class Worker extends EventWorker {
  *      @Override
- *      public void processButtonEvent(...) {
- *          // Your processing
+ *      @EventProcess(identifier = "confirm")
+ *      public void processButtonEvent(Member member, MessageChannelUnion channel, String compID, ButtonInteractionEvent event) {
+ *          event.reply("Confirmed").queue();
  *      }
  * }
+ *
+ * handler.registerEvent(InteractionSet.fromAnnotation());
  * }</pre>
  *
  * @version core-1.0.0
@@ -42,19 +51,20 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
  * @author ShuraBlack
  */
 public abstract class EventWorker {
-    
+
+    /** Message of the {@link ImplementationException} thrown by the default implementations */
     private static final String MSG = "Function isn't implemented or still use super function call";
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ButtonInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link ButtonInteractionEvent}.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the custom ID of the button.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link ButtonInteractionEvent Event} got called
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.buttons.Button Button} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who clicked the button, null outside of guilds
+     * @param channel the channel where the {@link ButtonInteractionEvent event} got fired
+     * @param compID the custom ID of the {@link net.dv8tion.jda.api.components.buttons.Button Button}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processButtonEvent(final Member member, final MessageChannelUnion channel, final String compID, final ButtonInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -62,14 +72,16 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link SlashCommandInteractionEvent}
+     * outside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the command name, or the full command name (e.g. "music play") for
+     * {@link de.shurablack.core.event.annotation.command.CommandHandler @CommandHandler} registrations.
      * </p>
-     * @param user is a independent discord user object
-     * @param channel is the private channel of the given user
-     * @param name is the command name of {@link SlashCommandInteractionEvent#getName()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param user the {@link User} who used the command
+     * @param channel the private channel where the command got used, null outside of private channels (e.g. group DMs)
+     * @param name the sub command name of {@link SlashCommandInteractionEvent#getSubcommandName()}, null if the command has no sub command
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGlobalSlashEvent(final User user, final PrivateChannel channel, final String name, final SlashCommandInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -77,14 +89,16 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link SlashCommandInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link SlashCommandInteractionEvent}
+     * inside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the command name, or the full command name (e.g. "music play") for
+     * {@link de.shurablack.core.event.annotation.command.CommandHandler @CommandHandler} registrations.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link SlashCommandInteractionEvent Event} got called
-     * @param name is the command name of {@link SlashCommandInteractionEvent#getName()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who used the command
+     * @param channel the channel where the {@link SlashCommandInteractionEvent event} got fired
+     * @param name the sub command name of {@link SlashCommandInteractionEvent#getSubcommandName()}, null if the command has no sub command
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGuildSlashEvent(final Member member, final MessageChannelUnion channel, final String name, final SlashCommandInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -92,14 +106,14 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link ModalInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link ModalInteractionEvent}.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the custom ID of the modal.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link SlashCommandInteractionEvent Event} got called
-     * @param compID is the custom ID you set on an {@link ModalInteractionEvent} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who submitted the modal, null outside of guilds
+     * @param channel the channel where the {@link ModalInteractionEvent event} got fired
+     * @param compID the custom ID of the modal, see {@link ModalInteractionEvent#getModalId()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processModalEvent(final Member member, final MessageChannelUnion channel, final String compID, final ModalInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -107,14 +121,16 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageReceivedEvent}
+     * in a private channel.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the first word of the message, starting with the
+     * {@link de.shurablack.core.event.handler.EventHandler#getPREFIX() prefix}.
      * </p>
-     * @param user is a independent discord user object
-     * @param channel is the private channel of the given user where the {@link MessageReceivedEvent Event} got called
-     * @param message is the raw content given by {@link Message#getContentRaw()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param user the {@link User} who sent the message
+     * @param channel the private channel where the {@link MessageReceivedEvent event} got fired
+     * @param message the raw content of {@link Message#getContentRaw()} with the identifier removed
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processPrivateChannelEvent(final User user, final PrivateChannel channel, final String message, final MessageReceivedEvent event) {
         throw new ImplementationException(MSG);
@@ -122,14 +138,15 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageReactionAddEvent}
+     * in a private channel.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the one stored for the reacted message.
      * </p>
-     * @param user is a independent discord user object
-     * @param channel is the private channel of the given user where the {@link MessageReactionAddEvent Event} got called
-     * @param name is the unicode or custom name of the {@link Emoji#getName()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param user the {@link User} who added the reaction
+     * @param channel the private channel where the {@link MessageReactionAddEvent event} got fired
+     * @param name the unicode or custom name of the emoji, see {@link Emoji#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processPrivateReactionEvent (final User user, final PrivateChannel channel, final String name, final MessageReactionAddEvent event) {
         throw new ImplementationException(MSG);
@@ -137,14 +154,16 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReceivedEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageReceivedEvent}
+     * in a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the first word of the message, starting with the
+     * {@link de.shurablack.core.event.handler.EventHandler#getPREFIX() prefix}.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link MessageReceivedEvent Event} got called
-     * @param message is the raw content given by {@link Message#getContentRaw()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who sent the message, null for webhook messages
+     * @param channel the channel where the {@link MessageReceivedEvent event} got fired
+     * @param message the raw content of {@link Message#getContentRaw()} with the identifier removed
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processPublicChannelEvent(final Member member, final MessageChannelUnion channel, final String message, final MessageReceivedEvent event) {
         throw new ImplementationException(MSG);
@@ -152,14 +171,15 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageReactionAddEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageReactionAddEvent}
+     * in a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the one stored for the reacted message.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link MessageReceivedEvent Event} got called
-     * @param name is the unicode or custom name of the {@link Emoji#getName()}
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who added the reaction
+     * @param channel the channel where the {@link MessageReactionAddEvent event} got fired
+     * @param name the unicode or custom name of the emoji, see {@link Emoji#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processPublicReactionEvent (final Member member, final MessageChannelUnion channel, final String name, final MessageReactionAddEvent event) {
         throw new ImplementationException(MSG);
@@ -167,14 +187,14 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link StringSelectInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link StringSelectInteractionEvent}.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the custom ID of the select menu.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction Event} got called
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenu SelectMenu} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who used the select menu, null outside of guilds
+     * @param channel the channel where the {@link StringSelectInteractionEvent event} got fired
+     * @param compID the custom ID of the {@link net.dv8tion.jda.api.components.selections.StringSelectMenu StringSelectMenu}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processStringSelectEvent(final Member member, final MessageChannelUnion channel, final String compID, final StringSelectInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -182,14 +202,14 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link EntitySelectInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires an {@link EntitySelectInteractionEvent}.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the custom ID of the select menu.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu Event} got called
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.components.selections.SelectMenu SelectMenu} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who used the select menu, null outside of guilds
+     * @param channel the channel where the {@link EntitySelectInteractionEvent event} got fired
+     * @param compID the custom ID of the {@link net.dv8tion.jda.api.components.selections.EntitySelectMenu EntitySelectMenu}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processEntitySelectEvent(final Member member, final MessageChannelUnion channel, final String compID, final EntitySelectInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -197,14 +217,15 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link UserContextInteractionEvent}
+     * outside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the name of the context command.
      * </p>
-     * @param source is an independent discord user object, which called the context
-     * @param target is an independent discord user object, which is the target of the call
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param source the {@link User} who used the context command
+     * @param target the {@link User} the context command got used on
+     * @param compID the name of the context command, see {@link UserContextInteractionEvent#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGlobalUserContextEvent(final User source, final User target, final String compID, final UserContextInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -212,14 +233,15 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link UserContextInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link UserContextInteractionEvent}
+     * inside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the name of the context command.
      * </p>
-     * @param source is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents the calling discord user
-     * @param target is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents the targeted discord user
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.UserContextInteraction UserContextInteraction} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param source the {@link Member} who used the context command
+     * @param target the {@link Member} the context command got used on, null if the target isn't a member of the guild
+     * @param compID the name of the context command, see {@link UserContextInteractionEvent#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGuildUserContextEvent(final Member source, final Member target, final String compID, final UserContextInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -227,14 +249,15 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageContextInteractionEvent}
+     * outside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the name of the context command.
      * </p>
-     * @param user is an independent discord user object, which called the context
-     * @param channel is where the {@link MessageContextInteractionEvent Event} got called
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param user the {@link User} who used the context command
+     * @param channel the channel where the {@link MessageContextInteractionEvent event} got fired
+     * @param compID the name of the context command, see {@link MessageContextInteractionEvent#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGlobalMessageContextEvent(final User user, final MessageChannelUnion channel, final String compID, final MessageContextInteractionEvent event) {
         throw new ImplementationException(MSG);
@@ -242,16 +265,35 @@ public abstract class EventWorker {
 
     /**
      * <p>
-     * Get called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} calls an {@link MessageContextInteractionEvent}
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link MessageContextInteractionEvent}
+     * inside of a guild.
      * <br><br>
-     * Override this function if you want an worker for the {@link net.dv8tion.jda.api.interactions.Interaction Interaction}
+     * The identifier is the name of the context command.
      * </p>
-     * @param member is a {@link net.dv8tion.jda.api.entities.Guild Guild} object which represents a discord user
-     * @param channel is where the {@link MessageContextInteractionEvent Event} got called
-     * @param compID is the custom ID you set on an {@link net.dv8tion.jda.api.interactions.commands.context.MessageContextInteraction MessageContextInteraction} object
-     * @param event is the original Event from {@link net.dv8tion.jda.api.JDA JDA}
+     * @param member the {@link Member} who used the context command
+     * @param channel the channel where the {@link MessageContextInteractionEvent event} got fired
+     * @param compID the name of the context command, see {@link MessageContextInteractionEvent#getName()}
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
      */
     public void processGuildMessageContextEvent(final Member member, final MessageChannelUnion channel, final String compID, final MessageContextInteractionEvent event) {
+        throw new ImplementationException(MSG);
+    }
+
+    /**
+     * <p>
+     * Gets called by the {@link de.shurablack.core.event.handler.EventHandler} when the {@link net.dv8tion.jda.api.JDA JDA} fires a {@link CommandAutoCompleteInteractionEvent}
+     * while a user types into an option with enabled auto complete. The identifier is the command name (without sub command).
+     * <br><br>
+     * Reply with {@link CommandAutoCompleteInteractionEvent#replyChoices} (max. 25 choices) within 3 seconds.
+     * There are no cooldowns, only the channel restriction applies. The choices are only suggestions,
+     * validate the submitted value in the slash command itself.
+     * </p>
+     * @param user the {@link User} who types into the option
+     * @param channel the channel where the {@link CommandAutoCompleteInteractionEvent event} got fired
+     * @param option the name of the focused option
+     * @param event the original event from {@link net.dv8tion.jda.api.JDA JDA}
+     */
+    public void processAutoCompleteEvent(final User user, final MessageChannelUnion channel, final String option, final CommandAutoCompleteInteractionEvent event) {
         throw new ImplementationException(MSG);
     }
 }

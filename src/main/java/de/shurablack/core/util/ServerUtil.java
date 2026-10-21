@@ -18,9 +18,10 @@ import java.util.List;
 
 /**
  * <p>
- * The ServerUtil class provides utility methods for working with Discord servers.
+ * Static helpers for working with Discord servers.
  * <br><br>
- * It contains constants for various colors and functions to work with the {@link net.dv8tion.jda.api.JDA}
+ * Contains embed color constants (RGB as decimal integers), a shared logger, and methods for role checks,
+ * webhook messages and copying role permission overrides.
  * </p>
  *
  * @version core-1.0.0
@@ -29,6 +30,7 @@ import java.util.List;
  */
 public class ServerUtil {
 
+    /** Shared logger named "Global_Logger", also used by the permission copy methods */
     public static final Logger GLOBAL_LOGGER = LoggerFactory.getLogger("Global_Logger");
 
     /**
@@ -64,19 +66,21 @@ public class ServerUtil {
     private ServerUtil() { }
 
     /**
-     * Checks if the {@link Member#getRoles()} include the given roleID
-     * @param member the specified server member which will be checked
-     * @param roleID the specified {@link net.dv8tion.jda.api.entities.Guild Guild} {@link Role#getId()}
-     * @return true if he owns the given role
+     * Checks if the {@link Member#getRoles()} include the given role ID.
+     * @param member the member to check
+     * @param roleID the {@link Role#getId()} of a {@link Guild} role
+     * @return true if the member has the role
      */
     public static boolean hasRole(final Member member, final String roleID) {
         return member.getRoles().stream().anyMatch(role -> role.getId().equals(roleID));
     }
 
     /**
-     * Sends a embeded message via the discrd webook URL
-     * @param webHookLink the specified URL generated in the discord channel settings
-     * @param builder the specified embed builder
+     * Sends an embed via a Discord webhook URL. A new client is created and closed for every call.
+     * <br><br>
+     * Uses the thread factory of the {@link Dispatcher}, so {@link Dispatcher#start()} must have been called.
+     * @param webHookLink the webhook URL from the Discord channel settings
+     * @param builder the embed builder
      */
     public static void sendWebHookMessage(final String webHookLink, final WebhookEmbedBuilder builder) {
 
@@ -92,8 +96,12 @@ public class ServerUtil {
     }
 
     /**
-     * Copies the permissions from one role to another in all channels
-     * @param guild the specified {@link Guild}
+     * Copies the permission override of the source role to the target role in every channel of the guild
+     * that has an override for the source role. Progress and errors are logged.
+     * <br><br>
+     * The overrides are queued asynchronously, but the calling thread sleeps one second after each one,
+     * so don't call it on a JDA event thread.
+     * @param guild the {@link Guild}
      * @param sourceId the {@link Role#getId()} of the source role
      * @param targetId the {@link Role#getId()} of the target role
      */
@@ -132,8 +140,9 @@ public class ServerUtil {
     }
 
     /**
-     * Copies the permissions from one role to another in a specific channel
-     * @param channel the specified {@link GuildChannel}
+     * Copies the permission override of the source role to the target role in a single channel.
+     * Logs an error if the source role has no override in that channel.
+     * @param channel the {@link GuildChannel}
      * @param source the source {@link Role}
      * @param target the target {@link Role}
      */

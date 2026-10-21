@@ -11,12 +11,20 @@ import java.util.Optional;
 
 /**
  * <p>
- * This is a default/example class
+ * Default listener that forwards {@link MessageReactionAddEvent}s on registered messages to an {@link EventHandler}.
  * <br><br>
- * The DefaultReactionReceiver class is a listener that listens for {@link MessageReactionAddEvent}
- * in a Discord chat server.
+ * Only reactions on messages registered in {@link #getMap()} are forwarded. The map key is
+ * {@code "<channelId>/<messageId>"} and the value is the identifier passed to the handler. Guild reactions go to
+ * {@link EventHandler#onPublicReactionEvent}, direct message reactions to {@link EventHandler#onPrivateReactionEvent}.
  * <br><br>
- * It extends the ListenerAdapter class from the JDA library, which provides a simple way to create listeners for Discord events.
+ * Example:
+ * </p>
+ * <pre>{@code
+ * DefaultReactionReceiver receiver = new DefaultReactionReceiver(handler);
+ * receiver.getMap().put(message.getChannel().getId() + "/" + message.getId(), "poll");
+ * }</pre>
+ * <p>
+ * Can be used as is or serve as an example for a custom {@link ListenerAdapter}.
  * </p>
  *
  * @version core-1.0.0
@@ -25,27 +33,29 @@ import java.util.Optional;
  */
 public class DefaultReactionReceiver extends ListenerAdapter {
 
-    /** The corresponding {@link de.shurablack.core.event.handler.EventHandler} */
+    /** The {@link EventHandler} that receives all forwarded events */
     private final EventHandler handler;
 
-    /** MultiKeyMap for grouping */
+    /** Maps {@code "<channelId>/<messageId>"} to the identifier; several messages can share one identifier */
     private final MultiKeyMap<String,String> map = new MultiKeyMap<>();
 
     /**
-     * The constructor for the class
-     * @param handler the specified {@link EventHandler}
+     * Creates a new receiver with an empty message registry.
+     * @param handler the {@link EventHandler} to forward the events to
      */
     public DefaultReactionReceiver(final EventHandler handler) {
         this.handler = handler;
     }
 
     /**
-     * @return the MultiKeyMap
+     * Returns the live registry of watched messages. It is not thread-safe.
+     * @return the map from {@code "<channelId>/<messageId>"} to identifier
      */
     public MultiKeyMap<String, String> getMap() {
         return map;
     }
 
+    /** Forwards reactions on registered messages to the public or private reaction handler method; others are ignored. */
     @Override
     public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
         Optional<String> identifier = Optional.ofNullable(map.get(event.getChannel().getId() + "/" + event.getMessageId()));

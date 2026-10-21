@@ -1,15 +1,20 @@
 package de.shurablack.core.builder;
 
 import de.shurablack.core.event.annotation.command.*;
-import io.github.classgraph.ClassGraph;
+import de.shurablack.core.util.ClassScan;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.*;
+import net.dv8tion.jda.api.requests.RestAction;
+import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
+import net.dv8tion.jda.api.sharding.ShardManager;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,48 +23,183 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+/**
+ * <p>
+ * Builds the interaction commands from the {@link SlashCommand} and {@link ContextCommand} annotations
+ * found by {@link ClassScan} and uploads them to Discord.
+ * <br><br>
+ * Commands with the guild ID "GLOBAL" (the default) are registered globally, all others on the guild
+ * with the given ID. Each upload replaces the full command list of its target (global or guild), so
+ * commands missing locally get deleted at Discord. Targets without any local command are not touched.
+ * All uploads are queued asynchronously, results are only logged.
+ * </p>
+ *
+ * @author ShuraBlack
+ */
 public class CommandUploadBuilder {
 
+    /** Class Logger */
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandUploadBuilder.class);
 
     private CommandUploadBuilder() {
         // Private constructor to prevent instantiation
     }
 
+    /**
+     * Uploads all commands, regardless of whether they changed
+     * @param jda the bot
+     */
     public static void uploadInteractionCommands(JDA jda) {
-        Map<String, List<CommandData>> commands = buildCommands();
+        uploadInteractionCommands(jda, false);
+    }
 
-        List<CommandData> global = commands.remove("GLOBAL");
-        if (global != null) {
-            LOGGER.info("Registering {} global commands...", global.size());
-            jda.updateCommands().addCommands(global).queue(
-                    r -> LOGGER.info("Successfully registered {} global commands!", global.size()),
-                    e -> LOGGER.error("Failed to register global commands!", e));
+    /**
+     * Uploads the commands via a single {@link JDA} instance. Guilds are looked up in its cache
+     * @param jda the bot
+     * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
+     */
+    public static void uploadInteractionCommands(JDA jda, boolean onlyChanged) {
+        upload(jda, jda::getGuildById, onlyChanged);
+    }
+
+    /**
+     * Uploads the commands via the shards of a {@link ShardManager}. Global commands are registered via the
+     * first shard, guilds are looked up across all shards
+     * @param manager the {@link ShardManager} with all shards ready
+     * @param onlyChanged true to skip targets (global/guild) whose commands are already registered unchanged
+     */
+    public static void uploadInteractionCommands(ShardManager manager, boolean onlyChanged) {
+        // Global commands are application wide, any shard can register them
+        upload(manager.getShards().get(0), manager::getGuildById, onlyChanged);
+    }
+
+    /**
+     * Uploads the global commands via the given bot and the guild commands via the looked up guilds.
+     * Unknown guilds are skipped with a warning
+     * @param jda the bot used for the global commands
+     * @param guilds resolves a guild ID to the guild, null if unknown
+     * @param onlyChanged true to skip targets whose commands are already registered unchanged
+     */
+    private static void upload(JDA jda, Function<String, Guild> guilds, boolean onlyChanged) {
+        Map<String, List<CommandData>> commands;
+        try {
+            commands = scanCommands();
+        } catch (Exception e) {
+            // A partial list would delete the missing commands at discord, so upload nothing
+            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
+            return;
         }
+
+        // Always sent, an empty list removes the commands that are no longer declared
+        List<CommandData> global = commands.getOrDefault("GLOBAL", new ArrayList<>());
+        commands.remove("GLOBAL");
+        push("global", global, jda.updateCommands(), jda.retrieveCommands(true), onlyChanged);
 
         for (Map.Entry<String, List<CommandData>> entry : commands.entrySet()) {
             String guildId = entry.getKey();
-            Guild guild = jda.getGuildById(guildId);
+            Guild guild = guilds.apply(guildId);
             if (guild == null) {
                 LOGGER.warn("Guild with ID {} not found! Skipping command registration for this guild.", guildId);
                 continue;
             }
-            List<CommandData> guildCommands = entry.getValue();
-
-            LOGGER.info("Registering {} commands for guild {}...", guildCommands.size(), guildId);
-            guild.updateCommands().addCommands(guildCommands).queue(
-                    r -> LOGGER.info("Successfully registered {} commands for guild {}!", guildCommands.size(), guildId),
-                    e -> LOGGER.error("Failed to register commands for guild {}!", guildId, e));
+            push("guild " + guildId, entry.getValue(), guild.updateCommands(), guild.retrieveCommands(true), onlyChanged);
         }
     }
 
+    /**
+     * Sends the commands of one target, or first compares them with the registered ones if onlyChanged is set
+     * @param target the target name used in the log messages
+     * @param local the locally built commands
+     * @param update the update action of the target, replaces all its commands
+     * @param registered retrieves the commands currently registered for the target
+     * @param onlyChanged true to skip the upload if the registered commands are equal
+     */
+    private static void push(String target, List<CommandData> local, CommandListUpdateAction update,
+                             RestAction<List<Command>> registered, boolean onlyChanged) {
+        if (!onlyChanged) {
+            send(target, local, update);
+            return;
+        }
+        registered.queue(remote -> {
+            List<CommandData> remoteData = remote.stream().map(CommandData::fromCommand).collect(Collectors.toList());
+            if (isUpToDate(remoteData, local)) {
+                LOGGER.info("Commands for {} are up to date, skipping upload", target);
+            } else {
+                send(target, local, update);
+            }
+        }, e -> LOGGER.error("Failed to retrieve registered commands for {}!", target, e));
+    }
+
+    /**
+     * Queues the update action with the given commands
+     * @param target the target name used in the log messages
+     * @param local the commands to register
+     * @param update the update action of the target
+     */
+    private static void send(String target, List<CommandData> local, CommandListUpdateAction update) {
+        LOGGER.info("Registering {} commands for {}...", local.size(), target);
+        update.addCommands(local).queue(
+                r -> LOGGER.info("Successfully registered {} commands for {}!", local.size(), target),
+                e -> LOGGER.error("Failed to register commands for {}!", target, e));
+    }
+
+    /**
+     * Compares the serialized commands, independent of command and field order
+     * @param registered the commands registered at Discord
+     * @param local the locally built commands
+     * @return true if both lists describe the same commands
+     */
+    static boolean isUpToDate(List<CommandData> registered, List<CommandData> local) {
+        if (registered.size() != local.size()) {
+            return false;
+        }
+        List<JSONObject> remaining = registered.stream().map(CommandUploadBuilder::toJson).collect(Collectors.toList());
+        for (CommandData data : local) {
+            JSONObject json = toJson(data);
+            if (!remaining.removeIf(json::similar)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @param data the command
+     * @return the command serialized like it is sent to Discord
+     */
+    private static JSONObject toJson(CommandData data) {
+        return new JSONObject(data.toData().toString());
+    }
+
+    /**
+     * Builds the command data of all classes annotated with {@link SlashCommand} or {@link ContextCommand}.
+     * If any command is invalid or the scan fails, the error is logged and an empty map is returned
+     * @return a mutable map from guild ID ("GLOBAL" for global commands) to its commands
+     */
     public static Map<String, List<CommandData>> buildCommands() {
+        try {
+            return scanCommands();
+        } catch (Exception e) {
+            LOGGER.error("Failed to build slash command configuration! No commands get uploaded", e);
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * @return a mutable map from guild ID ("GLOBAL" for global commands) to its commands
+     * @throws IllegalArgumentException if a command declaration is invalid
+     */
+    private static Map<String, List<CommandData>> scanCommands() {
         Map<String, List<CommandData>> commands = new HashMap<>();
 
-        try (ScanResult result = new ClassGraph().enableAllInfo().acceptPackages("").scan()) {
+        try (ScanResult result = ClassScan.scan()) {
             ClassInfoList classes = result.getClassesWithAnnotation(SlashCommand.class);
             for (ClassInfo info : classes) {
+                // Superclasses outside of the scanned packages
+                if (info.isExternalClass()) continue;
                 Class<?> workerClass = info.loadClass();
 
                 SlashCommand command = workerClass.getAnnotation(SlashCommand.class);
@@ -70,6 +210,8 @@ public class CommandUploadBuilder {
 
             classes = result.getClassesWithAnnotation(ContextCommand.class);
             for (ClassInfo info : classes) {
+                // Superclasses outside of the scanned packages
+                if (info.isExternalClass()) continue;
                 Class<?> workerClass = info.loadClass();
 
                 ContextCommand command = workerClass.getAnnotation(ContextCommand.class);
@@ -77,13 +219,16 @@ public class CommandUploadBuilder {
                 commands.computeIfAbsent(command.guildId(), x -> new ArrayList<>());
                 commands.get(command.guildId()).add(extractContextCommand(command));
             }
-        } catch (Exception e) {
-            LOGGER.error("Failed to build slash command configuration!", e);
         }
 
         return commands;
     }
 
+    /**
+     * @param command the annotation
+     * @return the slash command data, including sub commands, options, localizations and permissions
+     * @throws IllegalArgumentException if a name/description is blank or both options and sub commands are set
+     */
     private static SlashCommandData extractSlashCommand(SlashCommand command) {
         validateNotBlank(command.name(), "Slash command name");
         validateNotBlank(command.description(), "Slash command description");
@@ -93,7 +238,11 @@ public class CommandUploadBuilder {
         addLocalizations(data::setNameLocalization, command.localizedNames());
         addLocalizations(data::setDescriptionLocalization, command.localizedDescriptions());
 
+        if (command.subCommands().length > 0 && command.options().length > 0)
+            throw new IllegalArgumentException("Slash command /" + command.name() + " cannot have options and sub commands!");
+
         extractSubCommand(data, command.subCommands());
+        data.addOptions(extractOptionData(command.options()));
 
         if (command.defaultMemberPermissions().length > 0)
             data.setDefaultPermissions(DefaultMemberPermissions.enabledFor(command.defaultMemberPermissions()));
@@ -106,6 +255,11 @@ public class CommandUploadBuilder {
         return data;
     }
 
+    /**
+     * @param command the annotation
+     * @return the context menu command data
+     * @throws IllegalArgumentException if the name is blank or the type is null
+     */
     private static CommandData extractContextCommand(ContextCommand command) {
         validateNotBlank(command.name(), "Context command name");
         if (command.type() == null)
@@ -125,6 +279,11 @@ public class CommandUploadBuilder {
         return data;
     }
 
+    /**
+     * Adds the sub commands to the slash command
+     * @param data the slash command
+     * @param subCommands the sub command annotations, may be empty
+     */
     private static void extractSubCommand(SlashCommandData data, SubCommand[] subCommands) {
         List<SubcommandData> subDataList = new ArrayList<>(subCommands.length);
         for (SubCommand subCommand : subCommands) {
@@ -143,6 +302,11 @@ public class CommandUploadBuilder {
         data.addSubcommands(subDataList);
     }
 
+    /**
+     * Converts the option annotations. A value of -1 for maxValue, minValue or maxLength means unset
+     * @param options the option annotations
+     * @return the option data in the same order
+     */
     private static List<OptionData> extractOptionData(CommandOption[] options) {
         List<OptionData> optionData = new ArrayList<>(options.length);
 
@@ -168,18 +332,31 @@ public class CommandUploadBuilder {
                 data.addChoice(choice.name(), choice.value());
             }
 
+            if (option.autoComplete())
+                data.setAutoComplete(true);
+
             optionData.add(data);
         }
 
         return optionData;
     }
 
+    /**
+     * @param value the value to check
+     * @param fieldName the name used in the exception message
+     * @throws IllegalArgumentException if the value is null or blank
+     */
     private static void validateNotBlank(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " cannot be null, blank, or empty!");
         }
     }
 
+    /**
+     * Passes each localized text to the setter
+     * @param localizationSetter e.g. the name or description localization setter
+     * @param localizations the localized texts
+     */
     private static void addLocalizations(BiConsumer<DiscordLocale, String> localizationSetter, LocalizedText[] localizations) {
         for (LocalizedText localizedText : localizations) {
             localizationSetter.accept(localizedText.locale(), localizedText.value());

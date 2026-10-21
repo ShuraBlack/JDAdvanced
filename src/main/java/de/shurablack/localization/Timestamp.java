@@ -6,15 +6,18 @@ import java.time.ZoneOffset;
 
 /**
  * <p>
- * The TimeFormatter class is a Java class that provides a way to format time in Discord.
+ * Utility for building Discord timestamp markdown ({@code <t:seconds:style>}).
+ * <br><br>
+ * Discord renders these tags in the time zone and locale of each viewer.
  * <br><br>
  * Example:
  * </p>
  * <pre>{@code
  * // Format the time to a long date time
- * String relativeTime = TimeFormatter.format(TimeFormatter.Format.LONG_DATE_TIME, 1614556800);
+ * String longDateTime = Timestamp.format(Timestamp.Format.LONG_DATE_TIME, 1614556800);
  * // Output: <t:1614556800:F>
- * // Discord text: Sunday, January 3, 2021 00:00:00 AM
+ * // Discord text (UTC, en-US): Monday, March 1, 2021 12:00 AM
+ * }</pre>
  *
  * @version localization-1.0.1
  * @date 05.03.2024
@@ -23,7 +26,7 @@ import java.time.ZoneOffset;
 public class Timestamp {
 
     /**
-     * The format of the time
+     * The Discord timestamp styles. The examples show the en-US rendering.
      */
     public enum Format {
         /** Example: 3 years ago */
@@ -42,42 +45,39 @@ public class Timestamp {
         SHORT_DATE_TIME("f");
 
         /**
-         * The identifier of the format
+         * The style letter used in the timestamp tag
          */
         private final String identifier;
 
         /**
          * Constructs a new format
-         * @param identifier the identifier of the format
+         * @param identifier the style letter used in the timestamp tag
          */
         Format(String identifier) {
             this.identifier = identifier;
         }
 
-        /**
-         * Gets the identifier of the format
-         * @return the identifier of the format
-         */
+        /** @return the style letter used in the timestamp tag, e.g. {@code "R"} */
         public String getIdentifier() {
             return identifier;
         }
     }
 
     /**
-     * Formats the time
-     * @param format the format of the time {@link Format}
-     * @param unixSeconds the time in seconds
-     * @return the formatted time
+     * Builds a timestamp tag for a Unix time.
+     * @param format the display style
+     * @param unixSeconds the time in seconds since the Unix epoch
+     * @return the timestamp tag, e.g. {@code "<t:1614556800:F>"}
      */
     public static String format(Format format, long unixSeconds) {
         return build(format, unixSeconds);
     }
 
     /**
-     * Formats the time
-     * @param format the format of the time {@link Format}
-     * @param time the time
-     * @return the formatted time
+     * Builds a timestamp tag for a local date-time, interpreted in the system default time zone.
+     * @param format the display style
+     * @param time the local date-time
+     * @return the timestamp tag, e.g. {@code "<t:1614556800:F>"}
      */
     public static String format(Format format, LocalDateTime time) {
         ZoneOffset current = ZoneId.systemDefault().getRules().getOffset(time);
@@ -85,10 +85,10 @@ public class Timestamp {
     }
 
     /**
-     * Builds the time string
-     * @param format the format of the time {@link Format}
-     * @param time the time in seconds
-     * @return the time string
+     * Builds the timestamp tag.
+     * @param format the display style
+     * @param time the time in seconds since the Unix epoch
+     * @return the timestamp tag
      */
     private static String build(Format format, long time) {
         return String.format("<t:%d:%s>", time, format.getIdentifier());
